@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict
 
+from Classes.Dating.DatingManager import DatingManager
+from Classes.General.PatronManager import PatronManager
+
 from discord import Guild
 
 if TYPE_CHECKING:
@@ -17,6 +20,8 @@ class GuildData:
     __slots__ = (
         "_state",
         "_parent",
+        "_patron_mgr",
+        "_dating_mgr",
     )
 
 ################################################################################
@@ -24,6 +29,9 @@ class GuildData:
 
         self._state: RentARaBot = bot
         self._parent: Guild = parent
+        
+        self._patron_mgr: PatronManager = PatronManager(self)
+        self._dating_mgr: DatingManager = DatingManager(self)
 
 ################################################################################
     async def load_all(self, data: Dict[str, Any]) -> None:
@@ -47,5 +55,17 @@ class GuildData:
     def guild_id(self) -> int:
         
         return self._parent.id
+    
+################################################################################
+    @property
+    def patron_manager(self) -> PatronManager:
+        
+        return self._patron_mgr
+    
+################################################################################
+    @property
+    def dating_manager(self) -> DatingManager:
+        
+        return self._dating_mgr
     
 ################################################################################
