@@ -2,3 +2,4 @@ psycopg2~=2.9.9
 py-cord~=2.5.0
 python-dotenv~=1.0.1
 pytz~=2024.1
+emoji~=2.12.1

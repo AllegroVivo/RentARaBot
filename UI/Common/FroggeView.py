@@ -1,32 +1,32 @@
 from __future__ import annotations
 
-from discord    import Interaction, Member, User
-from discord.ui import View
-from typing     import TYPE_CHECKING, Any, Optional, Union
+from typing import Any, Optional
 
-if TYPE_CHECKING:
-    pass
+from discord import Interaction, User
+from discord.ui import View
 ################################################################################
 
-__all__ = (
-    "FroggeView",
-)
+__all__ = ("FroggeView",)
 
 ################################################################################
 class FroggeView(View):
 
     def __init__(
-        self,
-        owner: Union[Member, User],
+        self, 
+        owner: User,
+        ctx: Any, 
         *args,
-        close_on_complete: bool = False,
+        close_on_complete: bool = True,
         **kwargs
     ):
-        super().__init__(*args, **kwargs)
+        
+        super().__init__(*args, timeout=600, **kwargs)
 
-        self.owner: Union[Member, User] = owner
+        self.owner: User = owner
         self.value: Optional[Any] = None
         self.complete: bool = False
+        
+        self.ctx: Any = ctx
 
         self._interaction: Optional[Interaction] = None
         self._close_on_complete: bool = close_on_complete
@@ -77,5 +77,35 @@ class FroggeView(View):
     def close_on_complete(self, value: bool) -> None:
 
         self._close_on_complete = value
+        
+################################################################################
+    async def edit_message_helper(self, interaction: Interaction, *args, **kwargs) -> None:
+
+        self.set_button_attributes()
+        
+        try:
+            await interaction.message.edit(*args, **kwargs)
+        except:
+            try:
+                await interaction.edit_original_response(*args, **kwargs)
+            except:
+                print("Edit Message Helper FAILED")
 
 ################################################################################
+    @staticmethod
+    async def dummy_response(interaction: Interaction) -> None:
+
+        try:
+            await interaction.respond("** **", delete_after=0.1)
+        except:
+            pass
+        
+################################################################################
+    def set_button_attributes(self) -> None:
+        
+        for child in self.children:
+            if hasattr(child, "set_attributes"):
+                child.set_attributes()
+                
+################################################################################
+                

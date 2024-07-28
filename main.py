@@ -5,22 +5,25 @@ import os
 from discord import Intents
 from dotenv import load_dotenv
 
-from Classes.Bot import RentARaBot
+from Classes.Core.Bot import RentARaBot
 ################################################################################
 
 load_dotenv()
 
 ################################################################################
-
-if os.getenv("DEBUG") == "True":
-    debug_guilds = [303742308874977280, 955933227372122173]
-else:
-    debug_guilds = None
     
 bot = RentARaBot(
     description="Rent-A-Ra Bot!",
-    intents=Intents.default(),
-    debug_guilds=debug_guilds
+    intents=Intents.all(),
+    debug_guilds=(
+        None
+        if os.getenv("DEBUG") == "True"
+        else [
+            303742308874977280, 
+            955933227372122173, 
+            1098708733284061278
+        ]
+    )
 )
 
 ################################################################################

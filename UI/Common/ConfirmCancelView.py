@@ -16,8 +16,10 @@ __all__ = ("ConfirmCancelView",)
 ################################################################################
 class ConfirmCancelView(FroggeView):
 
-    def __init__(self, owner: Union[Member, User], *args, **kwargs):
-        super().__init__(owner, *args, close_on_complete=True, **kwargs)
+    def __init__(self, owner: Union[Member, User], return_interaction: bool = False, **kwargs):
+        
+        self.return_interaction: bool = return_interaction
+        super().__init__(owner, None, **kwargs)
 
     @button(
         style=ButtonStyle.success,
@@ -26,10 +28,14 @@ class ConfirmCancelView(FroggeView):
         row=0
     )
     async def confirm(self, _, interaction: Interaction):
-        self.value = True
+        self.value = (
+            True if not self.return_interaction
+            else (True, interaction)
+        )
         self.complete = True
 
-        await interaction.response.edit_message()
+        if not self.return_interaction:
+            await interaction.response.edit_message()
         await self.stop()  # type: ignore
 
     @button(

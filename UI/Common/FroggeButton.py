@@ -18,13 +18,15 @@ class FroggeButton(Button):
     def set_style(self, attribute: Optional[Any]) -> None:
         
         if isinstance(attribute, str):
-            attribute = attribute.strip("═")
             attribute = attribute.strip()
-
-        if not attribute or attribute in ("`Not Set`", "Not Set"):
-            self.style = ButtonStyle.secondary
-        else:
-            self.style = ButtonStyle.primary
+            
+        self.style = ButtonStyle.secondary if not attribute else ButtonStyle.primary
             
 ################################################################################
-            
+    def set_attributes(self) -> None:
+        """Override this to set view object-dependent attributes."""
+        
+        pass
+    
+################################################################################
+    

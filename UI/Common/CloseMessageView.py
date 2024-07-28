@@ -12,7 +12,7 @@ __all__ = ("CloseMessageView",)
 class CloseMessageView(FroggeView):
 
     def __init__(self, owner: User):
-        super().__init__(owner, close_on_complete=True)
+        super().__init__(owner, None)
 
         self.add_item(CloseMessageButton())
 

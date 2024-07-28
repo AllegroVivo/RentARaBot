@@ -1,3 +1,3 @@
-from .FroggeLog import log
-from .Utilities import Utilities
+from .Modals import *
+from .Views import *
 ################################################################################

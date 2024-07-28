@@ -1,13 +1,31 @@
+from __future__ import annotations
+import emoji
 import math
 import re
-from datetime import datetime, time
-from typing import Any, List, Optional, Tuple, Union, Literal
+from datetime import datetime, time, tzinfo
+from enum import Enum
+from typing import Any, List, Optional, Tuple, Union, Literal, TYPE_CHECKING
 
 import pytz
-from discord import Colour, Embed, EmbedField
+from discord import (
+    Colour,
+    Embed,
+    EmbedField,
+    EmbedFooter,
+    Interaction,
+    NotFound,
+    ChannelType,
+    User,
+    Role,
+    Emoji
+)
+from discord.abc import GuildChannel
 
+from Enums import Timezone
 from .Colors import CustomColor
-from .Enums import Timezone
+
+if TYPE_CHECKING:
+    from Classes import GuildData
 ################################################################################
 
 __all__ = ("Utilities", )
@@ -29,7 +47,7 @@ class Utilities:
         Timezone.PRT: pytz.timezone('America/Puerto_Rico'),
         Timezone.AGT: pytz.timezone('America/Argentina/Buenos_Aires'),
         Timezone.CAT: pytz.timezone('Africa/Harare'),
-        Timezone.GMT: pytz.timezone('GMT'),
+        Timezone.UTC: pytz.timezone('UTC'),
         Timezone.ECT: pytz.timezone('Europe/Paris'),
         Timezone.EET: pytz.timezone('Europe/Bucharest'),
         Timezone.EAT: pytz.timezone('Africa/Nairobi'),
@@ -44,6 +62,12 @@ class Utilities:
         Timezone.NST: pytz.timezone('Pacific/Auckland'),
     }
     
+################################################################################
+    @staticmethod
+    def ensure_timezone(dt: datetime, tz: Timezone) -> datetime:
+
+        return dt if dt.tzinfo else Utilities.TIMEZONE_OFFSETS[tz].localize(dt)
+
 ################################################################################
     @staticmethod
     def make_embed(
@@ -282,18 +306,254 @@ class Utilities:
 ################################################################################
     @staticmethod
     def parse_salary(salary: str) -> Optional[int]:
-
+    
         # Remove commas and whitespace, and make lowercase
         salary = salary.lower().strip().replace(",", "")
-
+    
         try:
             if salary.endswith("k"):
-                return int(salary[:-1]) * 1000
+                return int(float(salary[:-1]) * 1000)
             elif salary.endswith("m"):
-                return int(salary[:-1]) * 1000000
+                return int(float(salary[:-1]) * 1000000)
             else:
-                return int(salary)
+                return int(float(salary))
         except ValueError:
             return
+
+################################################################################
+    @staticmethod
+    def abbreviate_number(number: int) -> str:
+        
+        if number is None:
+            return "N/A"
+    
+        if number < 1000:
+            return str(number)
+        elif number < 1000000:
+            if number % 1000 == 0:
+                return f"{number // 1000}k"
+            else:
+                return f"{number / 1000:.1f}k"
+        else:
+            if number % 1000000 == 0:
+                return f"{number // 1000000}m"
+            else:
+                return f"{number / 1000000:.1f}m"
+        
+################################################################################
+    @staticmethod
+    def localize_dt(dt: datetime, timezone: Timezone) -> datetime:
+
+        tz = Utilities.TIMEZONE_OFFSETS[timezone]
+        return tz.localize(dt) if dt.tzinfo is None else dt.astimezone(tz)
+
+################################################################################
+    class MentionableType(Enum):
+    
+        Role = 0
+        User = 1
+        Channel = 2
+        Emoji = 3
+        
+################################################################################
+    @staticmethod
+    async def listen_for(
+        interaction: Interaction, 
+        prompt: Embed,
+        mentionable_type: MentionableType,
+        channel_restrictions: Optional[List[ChannelType]] = None
+    ) -> Optional[Union[Role, User, GuildChannel, Emoji]]:
+        
+        if channel_restrictions and mentionable_type != Utilities.MentionableType.Channel:
+            raise ValueError("Channel restriction can only be used with MentionableType.Channel")
+        
+        match mentionable_type:
+            case Utilities.MentionableType.User:
+                pattern = r"<@!?(\d+)>"
+            case Utilities.MentionableType.Role:
+                pattern = r"<@&(\d+)>"
+            case Utilities.MentionableType.Channel:
+                pattern = r"<#(\d+)>"
+            case Utilities.MentionableType.Emoji:
+                pattern = r"<a?:\w+:(\d+)>"
+            case _:
+                raise ValueError(f"Invalid MentionableType: {mentionable_type}")
+        
+        if not prompt.footer:
+            prompt.footer = EmbedFooter(text="Type 'cancel' to stop the operation.")
+            
+        response = await interaction.respond(embed=prompt)
+
+        def check(m):
+            return (
+                m.author == interaction.user
+                and (x := re.match(pattern, m.content)) 
+                or Utilities.is_unicode_emoji(m.content)
+            ) or m.content.lower() == "cancel"
+
+        try:
+            message = await interaction.client.wait_for("message", check=check, timeout=180)
+        except TimeoutError:
+            embed = Utilities.make_embed(
+                title="Timeout",
+                description=(
+                    "You took too long to respond. Please try again."
+                ),
+                color=CustomColor.brand_red()
+            )
+            await response.respond(embed=embed)
+            return
+
+        error = Utilities.make_embed(
+            title="Invalid Mention",
+            description="You did not provide a valid mention. Please try again.",
+            color=CustomColor.brand_red()
+        )
+
+        if message.content.lower() == "cancel":
+            embed = Utilities.make_embed(
+                title="Cancelled",
+                description="You have cancelled the operation.",
+                color=CustomColor.brand_red()
+            )
+            await interaction.respond(embed=embed, ephemeral=True, delete_after=5)
+            
+            try:
+                await message.delete()
+                await response.delete_original_response()
+            except NotFound:
+                pass
+            finally:
+                return
+        
+        results = re.match(pattern, message.content)
+        if not results and not Utilities.is_unicode_emoji(message.content):
+            await interaction.respond(embed=error, ephemeral=True)
+            return
+
+        if results:
+            mentionable_id = int(results.group(1))
+            guild: GuildData = interaction.client[interaction.guild_id]  # type: ignore
+            
+            match mentionable_type:
+                case Utilities.MentionableType.User:
+                    mentionable = await guild.get_or_fetch_member_or_user(mentionable_id)
+                case Utilities.MentionableType.Channel:
+                    mentionable = await guild.get_or_fetch_channel(mentionable_id)
+                case Utilities.MentionableType.Role:
+                    mentionable = await guild.get_or_fetch_role(mentionable_id)
+                case Utilities.MentionableType.Emoji:
+                    mentionable = await guild.get_or_fetch_emoji(mentionable_id)
+                case _:
+                    raise ValueError(f"Invalid MentionableType: {mentionable_type}")
+            
+            if not mentionable:
+                await interaction.respond(embed=error, ephemeral=True)
+                return
+        else:
+            mentionable = message.content    
+        
+        try:
+            await message.delete()
+        except (NotFound, AttributeError):
+            pass
+        
+        try:
+            await response.delete_original_response()
+        except AttributeError:
+            try:
+                await response.delete()
+            except:
+                pass
+        except:
+            pass
+        
+        if channel_restrictions and mentionable.type not in channel_restrictions:
+            error = Utilities.make_embed(
+                title="Invalid Channel",
+                description=(
+                    f"You must mention a valid channel of type "
+                    f"`{'/'.join(p.name.title() for p in channel_restrictions)}`. "
+                    f"Please try again."
+                ),
+                color=CustomColor.brand_red()
+            )
+            await interaction.respond(embed=error, ephemeral=True)
+            return
+
+        return mentionable
+            
+################################################################################
+    @staticmethod
+    async def wait_for_image(interaction: Interaction, prompt: Embed) -> Optional[str]:
+
+        if not prompt.footer:
+            prompt.footer = EmbedFooter(text="Type 'cancel' to stop the operation.")
+            
+        msg = await interaction.respond(embed=prompt)
+        
+        def check(m):
+            return (
+                m.author == interaction.user and (
+                    (
+                        len(m.attachments) > 0
+                        and m.attachments[0].content_type in (
+                            "image/png", "image/jpeg", "image/gif", "image/webp"
+                        )
+                    )
+                    or m.content.lower() == "cancel"
+                )
+            )
+
+        try:
+            message = await interaction.client.wait_for("message", check=check, timeout=300)
+        except TimeoutError:
+            embed = Utilities.make_embed(
+                title="Timeout",
+                description=(
+                    "You took too long to upload an image. Please try again."
+                ),
+                color=CustomColor.brand_red()
+            )
+            await interaction.respond(embed=embed)
+            return
+        
+        intermediate = await interaction.respond("Processing image... Please wait...")
+
+        image_url = None
+        if message.content.lower() != "cancel":
+            try:
+                image_url = await interaction.client.dump_image(message.attachments[0])  # type: ignore
+            except NotFound:
+                pass
+
+        try:
+            await message.delete()
+        except NotFound:
+            pass
+        
+        try:
+            await intermediate.delete()
+        except NotFound:
+            pass
+
+        try:
+            await msg.delete_original_response()
+        except NotFound:
+            pass
+        
+        return image_url
+    
+################################################################################
+    @staticmethod
+    def string_clamp(text: str, length: int) -> str:
+
+        return text[:length] + "..." if len(text) > length else text
+
+################################################################################
+    @staticmethod
+    def is_unicode_emoji(e: str) -> bool:
+        
+        return e in emoji.EMOJI_DATA
 
 ################################################################################

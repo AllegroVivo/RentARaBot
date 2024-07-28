@@ -2,12 +2,10 @@ from typing import TYPE_CHECKING
 ################################################################################
 if TYPE_CHECKING:
     # Packages
-    from .Dating import *
-    from .General import *
+    from .Core import *
+    from .Database import *
+    from .Forms import *
     
     # Modules
-    from .Bot import RentARaBot
-    from .GuildData import GuildData
-    from .GuildManager import GuildManager
 ################################################################################
     
