@@ -26,6 +26,7 @@ class FormQuestionStatusView(FroggeView):
             ToggleRequiredButton(),
             PrimaryTextButton(),
             SecondaryTextButton(),
+            QuestionPromptMenuButton(),
             AddOptionButton(),
             ModifyOptionButton(),
             RemoveOptionButton(),
@@ -117,6 +118,23 @@ class SecondaryTextButton(FroggeButton):
         await self.view.ctx.set_secondary_text(interaction)
         self.set_attributes()
         
+        await self.view.edit_message_helper(
+            interaction, embed=self.view.ctx.status(), view=self.view
+        )
+        
+################################################################################
+class QuestionPromptMenuButton(FroggeButton):
+    
+    def __init__(self):
+        
+        super().__init__(
+            label="Modify Prompt",
+            disabled=False,
+            row=0
+        )
+        
+    async def callback(self, interaction: Interaction):
+        await self.view.ctx.prompt_menu(interaction)
         await self.view.edit_message_helper(
             interaction, embed=self.view.ctx.status(), view=self.view
         )

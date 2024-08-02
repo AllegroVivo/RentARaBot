@@ -9,7 +9,7 @@ from .Loader import DatabaseLoader
 from .Updater import DatabaseUpdater
 
 if TYPE_CHECKING:
-    from Classes import PartyBusBot
+    from Classes import RentARaBot
 ################################################################################
 
 __all__ = ("DatabaseWorker", )
@@ -32,9 +32,9 @@ class DatabaseWorker:
     )
 
 ################################################################################
-    def __init__(self, bot: PartyBusBot):
+    def __init__(self, bot: RentARaBot):
 
-        self._state: PartyBusBot = bot
+        self._state: RentARaBot = bot
 
         self._builder: DatabaseBuilder = DatabaseBuilder(bot)
         self._inserter: DatabaseInserter = DatabaseInserter(bot)

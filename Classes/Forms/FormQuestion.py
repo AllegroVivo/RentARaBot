@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, List, Dict, Type, TypeVar, Any
+from typing import TYPE_CHECKING, Optional, List, Dict, Type, TypeVar, Any, Tuple
 
 from discord import Embed, EmbedField, Interaction, SelectOption, User
 from discord.ext.pages import Page
@@ -12,6 +12,7 @@ from UI.Common import FroggeSelectView, BasicTextModal, ConfirmCancelView
 from UI.Forms import FormQuestionStatusView, FormPageResponseView
 from Utilities import Utilities as U
 from .FormOption import FormOption
+from .QuestionPrompt import QuestionPrompt
 
 if TYPE_CHECKING:
     from Classes import Form, RentARaBot
@@ -33,7 +34,8 @@ class FormQuestion:
         "_ui_type",
         "_required",
         "_options",
-        "_responses"
+        "_responses",
+        "_prompt",
     )
     
     MAX_OPTIONS = 20
@@ -46,12 +48,13 @@ class FormQuestion:
         self._order: int = order
 
         self._primary: str = primary_text
-        self._secondary: Optional[str] = kwargs.pop("secondary", None)
+        self._secondary: Optional[str] = kwargs.get("secondary")
         self._ui_type: UIComponentType = kwargs.get("ui_type", UIComponentType.ShortText)
         self._required: bool = kwargs.get("required", False)
         self._options: List[FormOption] = kwargs.get("options", [])
 
         self._responses: Dict[int, List[str]] = kwargs.get("responses", {})
+        self._prompt: Optional[QuestionPrompt] = kwargs.get("prompt")
     
 ################################################################################
     @classmethod
@@ -81,6 +84,12 @@ class FormQuestion:
         
         self._options = [FormOption.load(self, o) for o in data["options"]]
         self._responses = {response[1]: response[2] for response in data["responses"]}
+        
+        self._prompt = (
+            QuestionPrompt.load(self, data["prompt"])
+            if data["prompt"] is not None
+            else None
+        )
         
         return self
     
@@ -201,6 +210,14 @@ class FormQuestion:
             EmbedField(
                 name="Required",
                 value=str(BotEmojis.Check if self.required else BotEmojis.Cross),
+                inline=True
+            ),
+            EmbedField(
+                name="Question Prompt",
+                value=(
+                    "`Shows " +
+                    ("After`" if self._prompt.show_after else "Before`")
+                ) if self._prompt is not None else "`Not Enabled`",
                 inline=True
             ),
             EmbedField(
@@ -369,7 +386,7 @@ class FormQuestion:
         
         return [
             SelectOption(
-                label=option.label,
+                label=option.label or "Unlabelled Question",
                 value=option.id,
             )
             for option in self.options
@@ -405,7 +422,11 @@ class FormQuestion:
 
         return U.make_embed(
             title=f"__{self.primary_text}__",
-            description=f"*{self.secondary_text}*" if self.secondary_text else None,
+            description=(
+                (f"*{self.secondary_text}*" if self.secondary_text else "") +
+                "\n" +
+                ("***(Required)***" if self.required else "")
+            ),
             fields=[
                 EmbedField(
                     name="__Your Response__",
@@ -425,18 +446,30 @@ class FormQuestion:
 
 ################################################################################
     async def respond(self, interaction: Interaction) -> None:
+        
+        if self._prompt is not None and not self._prompt.show_after:
+            if not await self._prompt.send(interaction):
+                return
 
         match self.ui_type:
             case UIComponentType.ShortText:
-                await self._respond_to_short_text(interaction)
+                resp = await self._respond_to_short_text(interaction)
             case UIComponentType.LongText:
-                await self._respond_to_long_text(interaction)
+                resp = await self._respond_to_long_text(interaction)
             case UIComponentType.SelectMenu:
-                await self._respond_to_select_menu(interaction)
+                resp = await self._respond_to_select_menu(interaction)
             case UIComponentType.MultiSelect:
-                await self._respond_to_multi_select(interaction)
+                resp = await self._respond_to_multi_select(interaction)
             case _:
                 raise NotImplementedError(f"UI Component Type {self.ui_type} is not implemented.")
+        
+        if resp is None:
+            return
+        
+        user, response = resp
+        if self._prompt is not None and self._prompt.show_after:
+            if await self._prompt.send(interaction):
+                self._insert_form_response(user, response)
 
 ################################################################################
     def _insert_form_response(self, user: User, response: List[str]) -> None:
@@ -445,7 +478,7 @@ class FormQuestion:
         self._responses[user.id] = response
         
 ################################################################################
-    async def _respond_to_short_text(self, interaction: Interaction) -> None:
+    async def _respond_to_short_text(self, interaction: Interaction) -> Optional[Tuple[User, List[str]]]:
 
         assert self.ui_type == UIComponentType.ShortText, f"Invalid UI Component Type: {self.ui_type.proper_name}"
 
@@ -462,10 +495,10 @@ class FormQuestion:
         if not modal.complete:
             return
 
-        self._insert_form_response(interaction.user, [modal.value])
+        return interaction.user, [modal.value]
 
 ################################################################################
-    async def _respond_to_long_text(self, interaction: Interaction) -> None:
+    async def _respond_to_long_text(self, interaction: Interaction) -> Optional[Tuple[User, List[str]]]:
 
         assert self.ui_type == UIComponentType.LongText, f"Invalid UI Component Type: {self.ui_type.proper_name}"
 
@@ -483,10 +516,10 @@ class FormQuestion:
         if not modal.complete:
             return
 
-        self._insert_form_response(interaction.user, [modal.value])
+        return interaction.user, [modal.value]
 
 ################################################################################
-    async def _respond_to_select_menu(self, interaction: Interaction) -> None:
+    async def _respond_to_select_menu(self, interaction: Interaction) -> Optional[Tuple[User, List[str]]]:
 
         assert self.ui_type == UIComponentType.SelectMenu, f"Invalid UI Component Type: {self.ui_type.proper_name}"
 
@@ -506,10 +539,10 @@ class FormQuestion:
             return
 
         response = self.get_option(view.value)
-        self._insert_form_response(interaction.user, [response.value])
+        return interaction.user, [response.value]
 
 ################################################################################
-    async def _respond_to_multi_select(self, interaction: Interaction) -> None:
+    async def _respond_to_multi_select(self, interaction: Interaction) -> Optional[Tuple[User, List[str]]]:
 
         assert self.ui_type == UIComponentType.MultiSelect, f"Invalid UI Component Type: {self.ui_type.proper_name}"
 
@@ -530,7 +563,7 @@ class FormQuestion:
             return
 
         responses = [self.get_option(v).value for v in view.value]
-        self._insert_form_response(interaction.user, responses)
+        return interaction.user, responses
 
 ################################################################################
     def delete_response(self, user: User) -> None:
@@ -544,4 +577,26 @@ class FormQuestion:
 
         return user.id in self._responses
 
+################################################################################
+    async def prompt_menu(self, interaction) -> None:
+        
+        if self._prompt is not None:
+            await self._prompt.menu(interaction)
+            return
+        
+        prompt = U.make_embed(
+            title="__Question Prompt__",
+            description="Would you like to enable a prompt for this question?"
+        )
+        view = ConfirmCancelView(interaction.user)
+        
+        await interaction.respond(embed=prompt, view=view)
+        await view.wait()
+        
+        if not view.complete or view.value is False:
+            return
+        
+        self._prompt = QuestionPrompt.new(self)
+        await self._prompt.menu(interaction)
+    
 ################################################################################

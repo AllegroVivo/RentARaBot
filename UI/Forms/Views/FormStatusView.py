@@ -23,6 +23,8 @@ class FormStatusView(FroggeView):
             AddQuestionButton(),
             ModifyQuestionButton(),
             RemoveQuestionButton(),
+            SetToNotifyButton(),
+            ModifyPromptsButton(),
             SetChannelButton(),
             ViewResponsesButton(),
             CloseMessageButton()
@@ -87,6 +89,42 @@ class RemoveQuestionButton(FroggeButton):
         )
         
 ################################################################################
+class ModifyPromptsButton(FroggeButton):
+
+    def __init__(self):
+
+        super().__init__(
+            style=ButtonStyle.primary,
+            label="Modify Pre/Post Prompts",
+            disabled=False,
+            row=1
+        )
+
+    async def callback(self, interaction: Interaction):
+        await self.view.ctx.prompts_menu(interaction)
+        await self.view.edit_message_helper(
+            interaction, embed=self.view.ctx.status(), view=self.view
+        )
+
+################################################################################
+class SetToNotifyButton(FroggeButton):
+
+    def __init__(self):
+
+        super().__init__(
+            style=ButtonStyle.primary,
+            label="Modify Users to Notify",
+            disabled=False,
+            row=1
+        )
+
+    async def callback(self, interaction: Interaction):
+        await self.view.ctx.notifications_menu(interaction)
+        await self.view.edit_message_helper(
+            interaction, embed=self.view.ctx.status(), view=self.view
+        )
+
+################################################################################
 class SetChannelButton(FroggeButton):
     
     def __init__(self):
@@ -94,7 +132,7 @@ class SetChannelButton(FroggeButton):
         super().__init__(
             label="Set Log Channel",
             disabled=False,
-            row=1
+            row=2
         )
         
     def set_attributes(self) -> None:
@@ -117,7 +155,7 @@ class ViewResponsesButton(FroggeButton):
             style=ButtonStyle.primary,
             label="View All Responses",
             disabled=False,
-            row=1
+            row=2
         )
         
     async def callback(self, interaction: Interaction):

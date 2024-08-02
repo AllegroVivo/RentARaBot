@@ -4,12 +4,14 @@ from typing import TYPE_CHECKING, List, Optional, Type, TypeVar, Dict, Any
 
 from discord import TextChannel, Embed, EmbedField, Interaction, SelectOption, User
 
-from .FormQuestion import FormQuestion
-from .FormResponseCollection import FormResponseCollection
+from Assets import BotEmojis
 from Errors import MaxItemsReached, ChannelNotSet, IncompleteForm
 from UI.Common import BasicTextModal, FroggeSelectView, ConfirmCancelView, Frogginator
-from UI.Forms import FormStatusView
+from UI.Forms import FormStatusView, FormPromptsMenuView, FormNotificationsMenuView
 from Utilities import Utilities as U
+from .FormQuestion import FormQuestion
+from .FormResponseCollection import FormResponseCollection
+from .FormPrompt import FormPrompt
 
 if TYPE_CHECKING:
     from Classes import FormsManager, RentARaBot
@@ -29,9 +31,14 @@ class Form:
         "_responses",
         "_channel",
         "_name",
+        "_pre_prompt",
+        "_post_prompt",
+        "_to_notify",
+        "_create_channel",
     )
     
     MAX_QUESTIONS = 20
+    MAX_TO_NOTIFY = 10
     
 ################################################################################
     def __init__(self, mgr: FormsManager, _id: str, **kwargs) -> None:
@@ -43,6 +50,12 @@ class Form:
         self._questions: List[FormQuestion] = kwargs.get("questions", [])
         self._responses: List[FormResponseCollection] = kwargs.get("responses", [])
         self._channel: Optional[TextChannel] = kwargs.get("channel")
+        
+        self._pre_prompt: Optional[FormPrompt] = kwargs.get("pre_prompt")
+        self._post_prompt: Optional[FormPrompt] = kwargs.get("post_prompt")
+        
+        self._to_notify: List[User] = kwargs.get("to_notify", [])
+        self._create_channel: bool = kwargs.get("create_channel", False)
     
 ################################################################################
     @classmethod
@@ -68,6 +81,22 @@ class Form:
         self._responses = [
             await FormResponseCollection.load(self, r) 
             for r in data["responses"]
+        ]
+        
+        self._pre_prompt = (
+            FormPrompt.load(self, data["pre_prompt"])
+            if data["pre_prompt"] is not None
+            else None
+        )
+        self._post_prompt = (
+            FormPrompt.load(self, data["post_prompt"])
+            if data["post_prompt"] is not None
+            else None
+        )
+        
+        self._to_notify = [
+            await mgr.guild.get_or_fetch_member_or_user(u)
+            for u in fdata[4]
         ]
         
         return self
@@ -152,8 +181,17 @@ class Form:
                 f"**Form Log Channel:** "
                 f"{self.channel.mention if self.channel else '`Not Set`'}\n\n"
 
+                "__**Users to Notify Upon Submission**__\n" + (
+                    "\n".join(
+                        f"* {u.mention} ({u.display_name})"
+                        for u in self._to_notify
+                    )
+                    if self._to_notify
+                    else "`No users to notify.`"
+                ) + "\n\n" +
+
                 "Press a button below to modify the form."
-            )
+            ),
         )
     
 ################################################################################
@@ -294,6 +332,10 @@ class Form:
     
 ################################################################################
     async def user_menu(self, interaction: Interaction) -> None:
+        
+        if self._pre_prompt is not None:
+            if not await self._pre_prompt.send(interaction):
+                return
 
         pages = [
             q.page(interaction.user)
@@ -331,6 +373,10 @@ class Form:
             )
             await interaction.respond(embed=error, ephemeral=True)
             return False
+        
+        if self._post_prompt is not None:
+            if not await self._post_prompt.send(interaction):
+                return False
 
         inter = await interaction.respond("Processing application... Please wait...")
 
@@ -351,8 +397,160 @@ class Form:
             q.delete_response(interaction.user)
 
         await inter.delete_original_response()
-        await self.channel.send(embed=new_collection.compile())
+        msg = await self.channel.send(embed=new_collection.compile())
+        
+        if self._to_notify:
+            confirm = U.make_embed(
+                title="__Form Submitted__",
+                description=(
+                    f"A form has been successfully submitted.\n"
+                    f"**Form Name:** `{self.name or 'Unnamed Form'}`\n\n"
+                    
+                    f"You can view the form response here: {msg.jump_url}"
+                )
+            )
+            
+            for user in self._to_notify:
+                try:
+                    await user.send(embed=confirm)
+                except:
+                    pass
+                
+        if self._create_channel:
+            await self._create_form_channel(interaction.user)
         
         return True
 
+################################################################################
+    def prompts_status(self) -> Embed:
+        
+        return U.make_embed(
+            title=f"__Form Prompt Status for: `{self.name}`__",
+            description=(
+                f"**[`Pre-Prompt Set`]:** "
+                f"{BotEmojis.Check if self._pre_prompt is not None else BotEmojis.Cross}\n"
+                f"**[`Post-Prompt Set`]:** "
+                f"{BotEmojis.Check if self._post_prompt is not None else BotEmojis.Cross}\n\n"
+            ),
+            # fields=[
+            #     EmbedField(
+            #         name="__Pre-Prompt__",
+            #         value=(
+            #             "__Title__:\n"
+            #             f"`{self._pre_prompt.title or 'No Title'}`\n\n"
+            #             
+            #             "__Description__:\n"
+            #             f"```{self._pre_prompt.description or 'No Description'}```"
+            #         ) if self._pre_prompt is not None else "`Not Set`",
+            #         inline=False
+            #     ),
+            #     EmbedField(
+            #         name="__Post-Prompt__",
+            #         value=(
+            #             "__Title__:\n"
+            #             f"`{self._post_prompt.title or 'No Title'}`\n\n"
+            #             
+            #             "__Description__:\n"
+            #             f"```{self._post_prompt.description or 'No Description'}```"
+            #         ) if self._post_prompt is not None else "`Not Set`",
+            #         inline=False
+            #     )
+            # ]
+        )
+    
+################################################################################
+    async def prompts_menu(self, interaction: Interaction) -> None:
+        
+        embed = self.prompts_status()
+        view = FormPromptsMenuView(interaction.user, self)
+        
+        await interaction.respond(embed=embed, view=view)
+        await view.wait()
+        
+################################################################################
+    async def pre_prompt_menu(self, interaction: Interaction) -> None:
+
+        if self._pre_prompt is None:
+            self._pre_prompt = FormPrompt.new(self, False)
+        await self._pre_prompt.menu(interaction)
+        
+################################################################################
+    async def post_prompt_menu(self, interaction: Interaction) -> None:
+
+        if self._post_prompt is None:
+            self._post_prompt = FormPrompt.new(self, True)
+        await self._post_prompt.menu(interaction)
+        
+################################################################################
+    def notifications_status(self) -> Embed:
+        
+        return U.make_embed(
+            title=f"__Form Status for: `{self.name}`__",
+            description=(
+                "__**Users to Notify Upon Submission**__\n" + (
+                    "\n".join(
+                        f"* {u.mention} ({u.display_name})"
+                        for u in self._to_notify
+                    )
+                    if self._to_notify
+                    else "`No users to notify.`"
+                )
+            )
+        )
+    
+################################################################################
+    async def notifications_menu(self, interaction: Interaction) -> None:
+
+        embed = self.notifications_status()
+        view = FormNotificationsMenuView(interaction.user, self)
+        
+        await interaction.respond(embed=embed, view=view)
+        await view.wait()
+        
+################################################################################
+    async def add_notification(self, interaction: Interaction) -> None:
+        
+        if len(self._to_notify) >= self.MAX_TO_NOTIFY:
+            error = MaxItemsReached("Users to Notify", self.MAX_TO_NOTIFY)
+            await interaction.respond(embed=error, ephemeral=True)
+            return
+        
+        prompt = U.make_embed(
+            title="__Add User to Notify__",
+            description="Mention the user you want to notify upon form submission."
+        )
+        user = await U.listen_for(interaction, prompt, U.MentionableType.User)
+        if user is None:
+            return
+        
+        self._to_notify.append(user)
+        self.update()
+    
+################################################################################
+    async def remove_notification(self, interaction: Interaction) -> None:
+        
+        prompt = U.make_embed(
+            title="__Remove User to Notify__",
+            description="Mention the user you want to remove from the notification list."
+        )
+        user = await U.listen_for(interaction, prompt, U.MentionableType.User)
+        if user is None:
+            return
+        
+        if user not in self._to_notify:
+            await interaction.respond("User is not in the notification list.")
+            return
+        
+        self._to_notify.remove(user)
+        self.update()
+    
+################################################################################
+    async def _create_form_channel(self, user: User) -> None:
+        
+        guild = self._mgr.guild.parent
+        member = await self._mgr.guild.get_or_fetch_member(user.id)
+        
+        channel = await guild.create_text_channel(member.display_name)
+        await channel.set_permissions(member, read_messages=True, send_messages=True)
+    
 ################################################################################

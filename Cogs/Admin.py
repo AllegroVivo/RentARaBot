@@ -9,13 +9,13 @@ from discord import (
 )
 
 if TYPE_CHECKING:
-    from Classes import FroggeBot
+    from Classes import RentARaBot
 ################################################################################
 class Admin(Cog):
     
-    def __init__(self, bot: "FroggeBot"):
+    def __init__(self, bot: "RentARaBot"):
         
-        self.bot: "FroggeBot" = bot
+        self.bot: "RentARaBot" = bot
         
 ################################################################################
         
@@ -36,7 +36,17 @@ class Admin(Cog):
         await guild.forms_manager.main_menu(ctx.interaction)
         
 ################################################################################
-def setup(bot: "FroggeBot") -> None:
+    @admin.command(
+        name="cards",
+        description="Manage the bot's Trading Card Game module."
+    )
+    async def cards_menu(self,  ctx: ApplicationContext) -> None:
+
+        guild = self.bot[ctx.guild_id]
+        await guild.card_manager.main_menu(ctx.interaction)
+        
+################################################################################
+def setup(bot: "RentARaBot") -> None:
     
     bot.add_cog(Admin(bot))
                 

@@ -1,4 +1,4 @@
-from ._Error import ErrorMessage
+from Errors._Error import ErrorMessage
 ################################################################################
 
 __all__ = ("ChannelNotSet",)

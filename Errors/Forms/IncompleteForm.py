@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List
 
-from ._Error import ErrorMessage
+from Errors._Error import ErrorMessage
 ################################################################################
 
 __all__ = ("IncompleteForm",)

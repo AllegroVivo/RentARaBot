@@ -6,6 +6,8 @@ from discord import Guild, NotFound, Role, Member, User, Emoji, Message
 from discord.abc import GuildChannel
 
 from Classes.Forms.FormsManager import FormsManager
+from Classes.Profiles.ProfileManager import ProfileManager
+from Classes.TradingCardGame.TCGManager import TCGManager
 from Utilities import log
 
 if TYPE_CHECKING:
@@ -20,7 +22,9 @@ class GuildData:
     __slots__ = (
         "_state",
         "_parent",
-        "_forms",
+        "_form_mgr",
+        "_profile_mgr",
+        "_tcg_mgr",
     )
 
 ################################################################################
@@ -29,12 +33,16 @@ class GuildData:
         self._state: FroggeBot = bot
         self._parent: Guild = parent
         
-        self._forms: FormsManager = FormsManager(self)
+        self._form_mgr: FormsManager = FormsManager(self)
+        self._profile_mgr: ProfileManager = ProfileManager(self)
+        self._tcg_mgr: TCGManager = TCGManager(self)
 
 ################################################################################
     async def load_all(self, payload: Dict[str, Any]) -> None:
         
-        await self._forms.load_all(payload["forms"])
+        await self._form_mgr.load_all(payload["forms"])
+        await self._profile_mgr.load_all(payload["profiles"])
+        await self._tcg_mgr.load_all(payload["trading_card_game"])
         
 ################################################################################
     @property
@@ -64,7 +72,19 @@ class GuildData:
     @property
     def forms_manager(self) -> FormsManager:
         
-        return self._forms
+        return self._form_mgr
+    
+################################################################################
+    @property
+    def profile_manager(self) -> ProfileManager:
+        
+        return self._profile_mgr
+    
+################################################################################
+    @property
+    def card_manager(self) -> TCGManager:
+        
+        return self._tcg_mgr
     
 ################################################################################
     async def get_or_fetch_channel(self, channel_id: Optional[int]) -> Optional[GuildChannel]:

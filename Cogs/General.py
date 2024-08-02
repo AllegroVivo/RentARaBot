@@ -3,19 +3,19 @@ from typing import TYPE_CHECKING
 from discord import (
     ApplicationContext,
     Cog,
-    Option,
-    SlashCommandOptionType,
-    slash_command
+    User,
+    slash_command,
+    user_command,
 )
 
 if TYPE_CHECKING:
-    from Classes import FroggeBot
+    from Classes import RentARaBot
 ################################################################################
 class General(Cog):
     
-    def __init__(self, bot: "FroggeBot"):
+    def __init__(self, bot: "RentARaBot"):
         
-        self.bot: "FroggeBot" = bot
+        self.bot: "RentARaBot" = bot
     
 ################################################################################
     @slash_command(
@@ -28,7 +28,14 @@ class General(Cog):
         await guild.forms_manager.user_menu(ctx.interaction)
         
 ################################################################################
-def setup(bot: "FroggeBot") -> None:
+    @user_command(name="Card Menu")
+    async def card_menu(self, ctx: ApplicationContext, user: User) -> None:
+        
+        guild = self.bot[ctx.guild_id]
+        await guild.card_manager.user_ctx_menu(ctx.interaction, user)
+        
+################################################################################
+def setup(bot: "RentARaBot") -> None:
     
     bot.add_cog(General(bot))
                 

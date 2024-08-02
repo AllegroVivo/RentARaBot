@@ -1,4 +1,5 @@
 from .BasicTextModal import BasicTextModal
+from .ConfirmView import ConfirmView
 from .CloseMessageButton import CloseMessageButton
 from .CloseMessageView import CloseMessageView
 from .ConfirmCancelView import ConfirmCancelView

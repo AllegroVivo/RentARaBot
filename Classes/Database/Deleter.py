@@ -56,10 +56,39 @@ class DatabaseDeleter(DBWorkerBranch):
         )
         
 ################################################################################
+    def _delete_question_prompt(self, prompt: QuestionPrompt) -> None:
+        
+        self.execute(
+            "DELETE FROM form_question_prompts WHERE _id = %s;",
+            prompt.id
+        )
+        
+################################################################################
+    def _delete_form_prompt(self, prompt: FormPrompt) -> None:
+        
+        self.execute(
+            "DELETE FROM form_prompts WHERE _id = %s;",
+            prompt.id
+        )
+        
+################################################################################
+    def _delete_trading_card(self, card: TradingCard) -> None:
+        
+        self.execute(
+            "DELETE FROM trading_cards WHERE _id = %s;"
+            "DELETE FROM trading_card_details WHERE card_id = %s;"
+            "DELETE FROM trading_card_stats WHERE card_id = %s;",
+            card.id, card.id, card.id
+        )
+        
+################################################################################
 
     form_option         = _delete_form_option
     form_question       = _delete_form_question
     form                = _delete_form
     form_response       = _delete_form_response
+    question_prompt     = _delete_question_prompt
+    form_prompt         = _delete_form_prompt
+    trading_card        = _delete_trading_card
     
 ################################################################################
