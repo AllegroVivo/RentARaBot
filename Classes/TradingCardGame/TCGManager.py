@@ -41,7 +41,7 @@ class TCGManager:
     async def load_all(self, payload: Dict[str, Any]) -> None:
         
         self._cards.load_all(payload["cards"])
-        await self._collections.load_all(payload["collections"])
+        await self._collections.load_all(payload["collections"], payload["booster_data"])
         
 ################################################################################
     @property
@@ -96,4 +96,14 @@ class TCGManager:
         
         await self._collections.user_ctx_menu(interaction, user)
         
+################################################################################
+    async def booster_management_menu(self, interaction: Interaction) -> None:
+        
+        await self._collections.booster_management(interaction)
+
+################################################################################
+    async def open_booster(self, interaction: Interaction) -> None:
+        
+        await self._collections.open_booster(interaction)
+
 ################################################################################

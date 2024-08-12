@@ -109,7 +109,7 @@ class ProfilePersonality(ProfileSection):
         embed = self.status()
         view = ProfilePersonalityMenuView(interaction.user, self)
 
-        await interaction.response.send_message(embed=embed, view=view)
+        await interaction.respond(embed=embed, view=view)
         await view.wait()
     
 ################################################################################

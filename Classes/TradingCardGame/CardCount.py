@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Type, TypeVar, Any, Tuple
 
+from discord import Embed, Interaction
+from Utilities import Utilities as U
+from UI.Common import ConfirmCancelView
+
 if TYPE_CHECKING:
     from Classes import CardCollection, TradingCard, RentARaBot
 ################################################################################
@@ -43,8 +47,8 @@ class CardCount:
         return cls(
             parent=parent,
             _id=data[0],
-            card=parent.card_manager.get_card(data[1]),
-            qty=data[2]
+            card=parent.card_manager.get_card(data[2]),
+            qty=data[3]
         )
     
 ################################################################################
@@ -83,4 +87,29 @@ class CardCount:
         self.bot.database.update.card_count(self)
     
 ################################################################################
+    def delete(self) -> None:
+        
+        self.bot.database.delete.card_count(self)
+        self._parent.cards.remove(self)
+        
+################################################################################
+    async def remove(self, interaction: Interaction) -> None:
+        
+        prompt = U.make_embed(
+            title="__Remove Card__",
+            description=(
+                f"Are you sure you want to remove all copies of "
+                f"`{self.card.name}` from this collection?"
+            ),
+        )
+        view = ConfirmCancelView(interaction.user)
+        
+        await interaction.respond(embed=prompt, view=view)
+        await view.wait()
+        
+        if not view.complete or view.value is False:
+            return
+        
+        self.delete()
     
+################################################################################

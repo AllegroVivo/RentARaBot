@@ -26,6 +26,7 @@ class ProfileMainMenuView(FroggeView):
             PersonalityButton(),
             ImagesButton(),
             PreviewProfileButton(),
+            PreviewPreferencesButton(),
             PreviewAboutMeButton(),
             PostProfileButton(),
             ProfileProgressButton(),
@@ -73,13 +74,13 @@ class PersonalityButton(FroggeButton):
         
         super().__init__(
             style=ButtonStyle.primary,
-            label="Personality Elements",
+            label="Personality/Preferences",
             disabled=False,
             row=0
         )
         
     async def callback(self, interaction: Interaction):
-        await self.view.ctx.personality_menu(interaction)
+        await self.view.ctx.personality_preferences_menu(interaction)
         
 ################################################################################
 class ImagesButton(FroggeButton):
@@ -112,6 +113,21 @@ class PreviewProfileButton(FroggeButton):
         await self.view.ctx.preview_profile(interaction)
         
 ################################################################################
+class PreviewPreferencesButton(FroggeButton):
+    
+    def __init__(self):
+        
+        super().__init__(
+            style=ButtonStyle.primary,
+            label="Preview Preferences",
+            disabled=False,
+            row=1
+        )
+        
+    async def callback(self, interaction: Interaction):
+        await self.view.ctx.preview_preferences(interaction)
+        
+################################################################################
 class PreviewAboutMeButton(FroggeButton):
     
     def __init__(self):
@@ -135,7 +151,7 @@ class PostProfileButton(FroggeButton):
             style=ButtonStyle.secondary,
             label="Post/Update Profile",
             disabled=False,
-            row=1,
+            row=2,
             emoji=BotEmojis.FlyingEnvelope
         )
         
@@ -151,7 +167,7 @@ class ProfileProgressButton(FroggeButton):
             style=ButtonStyle.secondary,
             label="Profile Progress",
             disabled=False,
-            row=1,
+            row=2,
             emoji=BotEmojis.Goose
         )
         

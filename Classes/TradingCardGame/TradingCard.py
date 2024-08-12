@@ -8,7 +8,7 @@ from Assets import BotEmojis
 from Enums import CharacterGroup, CardRarity
 from .TradingCardStats import TradingCardStats
 from .TradingCardDetails import TradingCardDetails
-from UI.Common import ConfirmCancelView
+from UI.Common import ConfirmCancelView, BasicTextModal, InstructionsInfo
 from UI.TradingCardGame import TradingCardStatusView
 from Utilities import Utilities as U, FroggeColor
 
@@ -32,11 +32,11 @@ class TradingCard:
     )
     
 ################################################################################
-    def __init__(self, parent: CardSeries, _id: str, index: int, **kwargs) -> None:
+    def __init__(self, parent: CardSeries, _id: str, index: str, **kwargs) -> None:
 
         self._id: str = _id
         self._parent: CardSeries = parent
-        self._index: int = index
+        self._index: str = index
         
         self._details: TradingCardDetails = kwargs.get("details") or TradingCardDetails(self)
         self._stats: TradingCardStats = kwargs.get("stats") or TradingCardStats(self)
@@ -45,7 +45,7 @@ class TradingCard:
     @classmethod
     def new(cls: Type[TC], series: CardSeries) -> TC:
         
-        new_index = len(series) + 1
+        new_index = f"{(len(series) + 1):03d}"
         new_id = series.bot.database.insert.trading_card(series.id, new_index)
         
         return cls(series, new_id, new_index)
@@ -96,10 +96,16 @@ class TradingCard:
     
 ################################################################################
     @property
-    def index(self) -> int:
+    def index(self) -> str:
         
         return self._index
     
+    @index.setter
+    def index(self, value: str) -> None:
+            
+        self._index = value
+        self.update()
+        
 ################################################################################
     @property
     def group(self) -> Optional[CharacterGroup]:
@@ -165,6 +171,22 @@ class TradingCard:
     
 ################################################################################
     @property
+    def is_filled_out(self) -> bool:
+        
+        return all([
+            self.name is not None,
+            self.group is not None,
+            self.image is not None,
+            self.rarity is not None,
+            self.battle is not None,
+            self.nsfw is not None,
+            self.sfw is not None,
+            self.die_marker is not None,
+            self.bad is not None
+        ]) 
+    
+################################################################################
+    @property
     def rarity_color(self) -> FroggeColor:
         
         match self.rarity:
@@ -181,6 +203,11 @@ class TradingCard:
             case _:
                 raise ValueError(f"Invalid Rarity: {self.rarity.proper_name}")
     
+################################################################################
+    def update(self) -> None:
+        
+        self.bot.database.update.trading_card(self)
+        
 ################################################################################
     def status(self) -> Embed:
         
@@ -210,7 +237,7 @@ class TradingCard:
                 ),
             ],
             thumbnail_url=self.image,
-            footer_text=f"Card ID: {self.index}/{len(self.series)}"
+            footer_text=f"Card Index: {self.index}/{len(self.series):03d}"
         )
         
 ################################################################################
@@ -243,12 +270,38 @@ class TradingCard:
         await self._details.set_rarity(interaction)
         
 ################################################################################
+    async def set_index(self, interaction: Interaction) -> None:
+        
+        modal = BasicTextModal(
+            title="Set Card Index",
+            attribute="Index Value",
+            example="eg. '042' or '003-a'",
+            cur_val=self.index,
+            max_length=5,
+            instructions=InstructionsInfo(
+                placeholder="Enter the card's index value.",
+                value=(
+                    "Enter the card's index value, using a format "
+                    "of '###' or '###-a' (for alternate cards).\n"
+                )
+            )
+        )
+        
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+        
+        if not modal.complete:
+            return
+        
+        self.index = modal.value
+        
+################################################################################
     def select_option(self) -> SelectOption:
         
         return SelectOption(
             label=self.name or "Unnamed Card",
             value=self.id,
-            description=f"({self.rarity.proper_name})"
+            description=f"ID: {self.index} ({self.rarity.proper_name})"
         )
     
 ################################################################################

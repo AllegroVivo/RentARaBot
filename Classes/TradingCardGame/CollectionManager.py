@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional, Any, Dict
 
-from discord import Embed, EmbedField, Interaction
+from discord import Embed, EmbedField, Interaction, User
 
 from .CardCollection import CardCollection
 from Utilities import Utilities as U
 from UI.TradingCardGame import CollectionManagerMenuView
+from .BoosterPackConfig import BoosterPackConfig
 
 if TYPE_CHECKING:
     from Classes import TCGManager, RentARaBot, GuildData, CardManager
@@ -20,18 +21,22 @@ class CollectionManager:
     __slots__ = (
         "_mgr",
         "_collections",
+        "_booster_config",
     )
     
 ################################################################################
     def __init__(self, mgr: TCGManager) -> None:
 
         self._mgr: TCGManager = mgr
+        
         self._collections: List[CardCollection] = []
+        self._booster_config: BoosterPackConfig = BoosterPackConfig(self)
     
 ################################################################################
-    async def load_all(self, data: List[Dict[str, Any]]) -> None:
+    async def load_all(self, coll_data: List[Dict[str, Any]], booster_data: Dict[str, Any]) -> None:
         
-        self._collections = [await CardCollection.load(self, d) for d in data]
+        self._collections = [await CardCollection.load(self, d) for d in coll_data]
+        self._booster_config.load_all(booster_data)
             
 ################################################################################
     def __getitem__(self, user_id: int) -> Optional[CardCollection]:
@@ -75,6 +80,16 @@ class CollectionManager:
         await view.wait()
     
 ################################################################################
+    def _get_collection(self, user: User) -> CardCollection:
+
+        collection = self[user.id]
+        if collection is None:
+            collection = CardCollection.new(self, user)
+            self._collections.append(collection)
+            
+        return collection
+    
+################################################################################
     async def modify_collection(self, interaction: Interaction) -> None:
         
         prompt = U.make_embed(
@@ -85,16 +100,39 @@ class CollectionManager:
         if user is None:
             return
         
-        collection = self[user.id]
-        if collection is None:
-            collection = CardCollection.new(self, user)
-            self._collections.append(collection)
-            
+        collection = self._get_collection(user)
         await collection.menu(interaction)
     
 ################################################################################
     async def view_collection(self, interaction: Interaction) -> None:
-        
-        pass
-    
+
+        prompt = U.make_embed(
+            title="__Modify Collection__",
+            description="Enter a user to modify their collection.",
+        )
+        user = await U.listen_for(interaction, prompt, U.MentionableType.User)
+        if user is None:
+            return
+
+        collection = self._get_collection(user)
+        await collection.view(interaction)
+
 ################################################################################
+    async def booster_management(self, interaction: Interaction) -> None:
+        
+        await self._booster_config.main_menu(interaction)
+                    
+################################################################################
+    async def user_ctx_menu(self, interaction: Interaction, user: User) -> None:
+
+        collection = self._get_collection(user)
+        await collection.menu(interaction)
+
+################################################################################
+    async def open_booster(self, interaction: Interaction) -> None:
+
+        collection = self._get_collection(interaction.user)
+        await collection.open_booster(interaction)
+
+################################################################################
+    

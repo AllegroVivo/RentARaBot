@@ -21,6 +21,7 @@ class TradingCardMainMenuView(FroggeView):
         
         button_list = [
             TradingCardsSetupButton(),
+            BoosterPackManagementButton(),
             CollectionMenuButton(),
             BattleSystemConfigButton(),
             CloseMessageButton()
@@ -44,6 +45,21 @@ class TradingCardsSetupButton(FroggeButton):
         await self.view.ctx.trading_cards_menu(interaction)
         
 ################################################################################
+class BoosterPackManagementButton(FroggeButton):
+    
+    def __init__(self):
+        
+        super().__init__(
+            style=ButtonStyle.primary,
+            label="Configure Booster Pack Behavior",
+            disabled=False,
+            row=0
+        )
+        
+    async def callback(self, interaction: Interaction):
+        await self.view.ctx.booster_management_menu(interaction)
+        
+################################################################################
 class CollectionMenuButton(FroggeButton):
     
     def __init__(self):
@@ -52,7 +68,7 @@ class CollectionMenuButton(FroggeButton):
             style=ButtonStyle.primary,
             label="Modify User Collections",
             disabled=False,
-            row=0
+            row=1
         )
         
     async def callback(self, interaction: Interaction):
@@ -67,7 +83,7 @@ class BattleSystemConfigButton(FroggeButton):
             style=ButtonStyle.primary,
             label="Configure Battle System",
             disabled=False,
-            row=0
+            row=1
         )
         
     async def callback(self, interaction: Interaction):

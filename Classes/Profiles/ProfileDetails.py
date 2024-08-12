@@ -240,7 +240,7 @@ class ProfileDetails(ProfileSection):
             return
         
         if modal.value is not None:
-            url = modal.value.lower().strip("http://")
+            url = modal.value.lower().lstrip("http").lstrip("s").lstrip("://")
             if not url.startswith("https://"):
                 url = f"https://{url}"
         else:

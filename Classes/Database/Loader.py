@@ -40,19 +40,26 @@ class DatabaseLoader(DBWorkerBranch):
             "form_prompts",
             "form_question_prompts",
             "profile_requirements",
-            "profile_systems",
             "profiles",
             "profile_details",
             "profile_ataglance",
             "profile_personality",
             "profile_images",
             "profile_addl_images",
+            "profile_channel_groups",
+            "profile_preference_groups",
+            "profile_preferences",
             "trading_card_details",
             "trading_card_stats",
             "trading_cards",
             "trading_card_series",
             "trading_card_collections",
             "trading_card_counts",
+            "role_relations",
+            "verification_config",
+            "tcg_booster_card_config",
+            "tcg_booster_config",
+            "tcg_rarity_weights",
         ]
 
         ret = {}
@@ -68,13 +75,21 @@ class DatabaseLoader(DBWorkerBranch):
             g.id: {
                 "forms": [],
                 "profiles": {
-                    "system": None,
                     "requirements": None,
                     "profiles": [],
+                    "channels": [],
                 },
                 "trading_card_game": {
                     "cards": [],
                     "collections": [],
+                    "booster_data": {
+                        "booster_config": None,
+                        "card_configs": [],
+                    },
+                },
+                "verification": {
+                    "config": None,
+                    "roles": []
                 }
             }
             for g in self.bot.guilds
@@ -125,8 +140,6 @@ class DatabaseLoader(DBWorkerBranch):
                     })
                     
         # Profiles
-        for system in payload["profile_systems"]:
-            ret[system[0]]["profiles"]["system"] = system
         for req in payload["profile_requirements"]:
             ret[req[0]]["profiles"]["requirements"] = req
         for profile in payload["profiles"]:
@@ -137,7 +150,7 @@ class DatabaseLoader(DBWorkerBranch):
                     for detail in payload["profile_details"]
                     if detail[0] == profile[0]
                 ), None),
-                "ataglance": next((
+                "aag": next((
                     ataglance
                     for ataglance in payload["profile_ataglance"]
                     if ataglance[0] == profile[0]
@@ -147,17 +160,33 @@ class DatabaseLoader(DBWorkerBranch):
                     for personality in payload["profile_personality"]
                     if personality[0] == profile[0]
                 ), None),
-                "images": next((
-                    image
-                    for image in payload["profile_images"]
-                    if image[0] == profile[0]
-                ), None),
-                "addl_images": [
-                    addl_image
-                    for addl_image in payload["profile_addl_images"]
-                    if addl_image[1] == profile[0]
-                ],
+                "images": {
+                    "images": next((
+                        image
+                        for image in payload["profile_images"]
+                        if image[0] == profile[0]
+                    ), None),
+                    "additional": [
+                        addl_image
+                        for addl_image in payload["profile_addl_images"]
+                        if addl_image[1] == profile[0]
+                    ],
+                },
+                "preferences": {
+                    "groups": [
+                        group
+                        for group in payload["profile_preference_groups"]
+                        if group[1] == profile[0]
+                    ],
+                    "preferences": next((
+                        pref
+                        for pref in payload["profile_preferences"]
+                        if pref[0] == profile[0]
+                    ), None),
+                }
             })
+        for group in payload["profile_channel_groups"]:
+            ret[group[1]]["profiles"]["channels"].append(group)
             
         # Trading Cards
         for series in payload["trading_card_series"]:
@@ -189,6 +218,23 @@ class DatabaseLoader(DBWorkerBranch):
                     if card[1] == collection[0]
                 ],
             })
+        for booster in payload["tcg_booster_config"]:
+            ret[booster[0]]["trading_card_game"]["booster_data"]["booster_config"] = booster
+        for config in payload["tcg_booster_card_config"]:
+            ret[config[1]]["trading_card_game"]["booster_data"]["card_configs"].append({
+                "config": config,
+                "weights": [
+                    weight
+                    for weight in payload["tcg_rarity_weights"]
+                    if weight[1] == config[0]
+                ],
+            })
+            
+        # Verification
+        for config in payload["verification_config"]:
+            ret[config[0]]["verification"]["config"] = config
+        for role in payload["role_relations"]:
+            ret[role[1]]["verification"]["roles"].append(role)
             
         return ret
     

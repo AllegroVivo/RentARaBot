@@ -1,4 +1,7 @@
 from .AdditionalImage import AdditionalImage
+from .ProfileChannelGroup import ProfileChannelGroup
+from .ProfilePreferences import ProfilePreferences
+from .PreferenceGroup import PreferenceGroup
 from .Profile import Profile
 from .ProfileAtAGlance import ProfileAtAGlance
 from .ProfileDetails import ProfileDetails

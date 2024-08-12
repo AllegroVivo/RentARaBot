@@ -124,11 +124,11 @@ class TradingCardStats:
     async def set_values(self, interaction: Interaction) -> None:
         
         modal = CardStatsModal((
+            self.die_marker,
             self.bad_stat, 
             self.battle_stat,
             self.nsfw_stat,
-            self.sfw_stat, 
-            self.die_marker
+            self.sfw_stat
         ))
         
         await interaction.response.send_modal(modal)
@@ -138,11 +138,11 @@ class TradingCardStats:
             return
         
         (
+            self.die_marker,
             self.bad_stat, 
             self.battle_stat, 
             self.nsfw_stat, 
-            self.sfw_stat, 
-            self.die_marker
+            self.sfw_stat
         ) = modal.value
         self.update()
     

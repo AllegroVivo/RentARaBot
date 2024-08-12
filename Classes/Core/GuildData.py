@@ -8,6 +8,7 @@ from discord.abc import GuildChannel
 from Classes.Forms.FormsManager import FormsManager
 from Classes.Profiles.ProfileManager import ProfileManager
 from Classes.TradingCardGame.TCGManager import TCGManager
+from Classes.Verification.VerificationManager import VerificationManager
 from Utilities import log
 
 if TYPE_CHECKING:
@@ -25,6 +26,7 @@ class GuildData:
         "_form_mgr",
         "_profile_mgr",
         "_tcg_mgr",
+        "_verification_mgr",
     )
 
 ################################################################################
@@ -36,6 +38,7 @@ class GuildData:
         self._form_mgr: FormsManager = FormsManager(self)
         self._profile_mgr: ProfileManager = ProfileManager(self)
         self._tcg_mgr: TCGManager = TCGManager(self)
+        self._verification_mgr: VerificationManager = VerificationManager(self)
 
 ################################################################################
     async def load_all(self, payload: Dict[str, Any]) -> None:
@@ -43,6 +46,7 @@ class GuildData:
         await self._form_mgr.load_all(payload["forms"])
         await self._profile_mgr.load_all(payload["profiles"])
         await self._tcg_mgr.load_all(payload["trading_card_game"])
+        await self._verification_mgr.load_all(payload["verification"])
         
 ################################################################################
     @property
@@ -85,6 +89,12 @@ class GuildData:
     def card_manager(self) -> TCGManager:
         
         return self._tcg_mgr
+    
+################################################################################
+    @property
+    def verification_manager(self) -> VerificationManager:
+        
+        return self._verification_mgr
     
 ################################################################################
     async def get_or_fetch_channel(self, channel_id: Optional[int]) -> Optional[GuildChannel]:

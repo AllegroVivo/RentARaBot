@@ -124,7 +124,7 @@ class ProfileRequirements:
     @staticmethod
     def emoji(value: bool) -> str:
         
-        return str(BotEmojis.Check) if value else str(BotEmojis.Cross)
+        return str(BotEmojis.CheckGreen) if value else str(BotEmojis.CheckGray)
     
 ################################################################################
     def status(self) -> Embed:

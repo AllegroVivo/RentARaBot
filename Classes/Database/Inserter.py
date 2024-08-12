@@ -37,9 +37,10 @@ class DatabaseInserter(DBWorkerBranch):
     def _insert_guild(self, guild_id: int) -> None:
 
         self.execute(
-            "INSERT INTO profile_systems (guild_id) VALUES (%s) ON CONFLICT DO NOTHING;"
-            "INSERT INTO profile_requirements (guild_id) VALUES (%s) ON CONFLICT DO NOTHING;",
-            guild_id, guild_id
+            "INSERT INTO profile_requirements (guild_id) VALUES (%s) ON CONFLICT DO NOTHING;"
+            "INSERT INTO verification_config (guild_id) VALUES (%s) ON CONFLICT DO NOTHING;"
+            "INSERT INTO tcg_booster_config (guild_id) VALUES (%s) ON CONFLICT DO NOTHING;",
+            guild_id, guild_id, guild_id
         )
         
 ################################################################################
@@ -121,14 +122,16 @@ class DatabaseInserter(DBWorkerBranch):
             "INSERT INTO profile_ataglance (profile_id) VALUES (%s);"
             "INSERT INTO profile_details (profile_id) VALUES (%s);"
             "INSERT INTO profile_personality (profile_id) VALUES (%s);"
-            "INSERT INTO profile_images (profile_id) VALUES (%s);",
-            new_id, guild_id, user_id, new_id, new_id, new_id, new_id
+            "INSERT INTO profile_images (profile_id) VALUES (%s);"
+            "INSERT INTO profile_preferences (profile_id) VALUES (%s);",
+            new_id, guild_id, user_id, new_id, new_id, new_id, new_id,
+            new_id
         )
         
         return new_id
         
 ################################################################################
-    def _insert_trading_card(self, series_id: str, idx: int) -> str:
+    def _insert_trading_card(self, series_id: str, idx: str) -> str:
         
         new_id = self.generate_id()
         
@@ -137,7 +140,7 @@ class DatabaseInserter(DBWorkerBranch):
             "INSERT INTO trading_card_details (card_id) VALUES (%s);"
             "INSERT INTO trading_card_stats (card_id) VALUES (%s);",
             new_id, series_id, idx, new_id, new_id
-        )
+        )#
         
         return new_id
     
@@ -169,20 +172,80 @@ class DatabaseInserter(DBWorkerBranch):
         )
         
 ################################################################################
+    def _insert_role_relation(self, guild_id: int) -> str:
+        
+        return self._insert(
+            "role_relations",
+            ["_id", "guild_id"],
+            [self.generate_id(), guild_id]
+        )
+    
+################################################################################
+    def _insert_profile_channel_group(self, guild_id: int) -> str:
+        
+        return self._insert(
+            "profile_channel_groups",
+            ["_id", "guild_id"],
+            [self.generate_id(), guild_id]
+        )
+    
+################################################################################
+    def _insert_preference_group(self, profile_id: str, gender: int) -> str:
+        
+        return self._insert(
+            "profile_preference_groups",
+            ["_id", "profile_id", "gender"],
+            [self.generate_id(), profile_id, gender]
+        )
+    
+################################################################################
+    def _insert_rarity_weight(self, parent_id: str, rarity: int) -> str:
+        
+        return self._insert(
+            "tcg_rarity_weights",
+            ["_id", "parent_id", "rarity"],
+            [self.generate_id(), parent_id, rarity]
+        )
+    
+################################################################################
+    def _insert_additional_image(self, parent_id: str, url: str) -> str:
+        
+        return self._insert(
+            "profile_addl_images",
+            ["_id", "profile_id", "url"],
+            [self.generate_id(), parent_id, url]
+        )
+    
+################################################################################
+    def _insert_booster_card_config(self, guild_id: int, order: int) -> str:
+        
+        return self._insert(
+            "tcg_booster_card_config",
+            ["_id", "guild_id", "sort_order"],
+            [self.generate_id(), guild_id, order]
+        )
+    
+################################################################################
 
-    guild               = _insert_guild
-    form                = _insert_form
-    form_option         = _insert_form_option
-    form_question       = _insert_form_question
-    form_response_coll  = _insert_form_response_collection
-    form_response       = _insert_form_response
-    question_prompt     = _insert_question_prompt
-    form_prompt         = _insert_form_prompt
-    profile             = _insert_profile
-    trading_card        = _insert_trading_card
-    card_series         = _insert_trading_card_series
-    card_collection     = _insert_card_collection
-    card_count          = _insert_card_count
+    guild                   = _insert_guild
+    form                    = _insert_form
+    form_option             = _insert_form_option
+    form_question           = _insert_form_question
+    form_response_coll      = _insert_form_response_collection
+    form_response           = _insert_form_response
+    question_prompt         = _insert_question_prompt
+    form_prompt             = _insert_form_prompt
+    profile                 = _insert_profile
+    trading_card            = _insert_trading_card
+    card_series             = _insert_trading_card_series
+    card_collection         = _insert_card_collection
+    card_count              = _insert_card_count
+    role_relation           = _insert_role_relation
+    profile_channel_group   = _insert_profile_channel_group
+    preference_group        = _insert_preference_group
+    rarity_weight           = _insert_rarity_weight
+    additional_image        = _insert_additional_image
+    booster_card_config     = _insert_booster_card_config
     
 ################################################################################
     

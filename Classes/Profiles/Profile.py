@@ -15,6 +15,7 @@ from discord import (
     Thread, 
     Forbidden,
     NotFound,
+    User
 )
 
 from Assets import BotEmojis, BotImages
@@ -24,15 +25,18 @@ from Errors import (
     ProfileIncomplete,
     ExceedsMaxLength,
     ChannelMissing,
-    InsufficientPermissions
+    InsufficientPermissions,
+    ProfileRoleNotOwned,
+    PrefsNotSet
 )
 from UI.Common import CloseMessageView, FroggeSelectView
-from UI.Profiles import ProfileMainMenuView
+from UI.Profiles import ProfileMainMenuView, PersonalityPreferencePickView
 from Utilities import Utilities as U
 from .ProfileAtAGlance import ProfileAtAGlance
 from .ProfileDetails import ProfileDetails
 from .ProfileImages import ProfileImages
 from .ProfilePersonality import ProfilePersonality
+from .ProfilePreferences import ProfilePreferences
 from Utilities.Constants import *
 
 if TYPE_CHECKING:
@@ -48,7 +52,7 @@ class Profile:
 
     __slots__ = (
         "_mgr",
-        "_character",
+        "_user",
         "_id",
         "_details",
         "_aag",
@@ -56,35 +60,37 @@ class Profile:
         "_images",
         "_post_url",
         "_post_msg",
+        "_preferences",
     )
     
     MAX_ADDL_IMAGES = 3
     
 ################################################################################
-    def __init__(self, mgr: ProfileManager, character: Character, _id: str) -> None:
+    def __init__(self, mgr: ProfileManager, user: User, _id: str) -> None:
 
         self._id: str = _id
         self._mgr: ProfileManager = mgr
-        self._character: Character = character
+        self._user: User = user
         
         self._details: ProfileDetails = ProfileDetails(self)
         self._aag: ProfileAtAGlance = ProfileAtAGlance(self)
         self._personality: ProfilePersonality = ProfilePersonality(self)
         self._images: ProfileImages = ProfileImages(self)
+        self._preferences: ProfilePreferences = ProfilePreferences(self)
         
         self._post_url: Optional[str] = None
         self._post_msg: Optional[Message] = None
     
 ################################################################################
     @classmethod
-    def new(cls: Type[P], mgr: ProfileManager, character: Character) -> P:
+    def new(cls: Type[P], mgr: ProfileManager, user: User) -> P:
         
-        new_id = mgr.bot.database.insert.profile(mgr.guild.guild_id, character.id)
-        return cls(mgr, character, new_id)
+        new_id = mgr.bot.database.insert.profile(mgr.guild.guild_id, user.id)
+        return cls(mgr, user, new_id)
     
 ################################################################################
     @classmethod
-    def load(cls: Type[P], mgr: ProfileManager, data: Dict[str, Any]) -> P:
+    async def load(cls: Type[P], mgr: ProfileManager, data: Dict[str, Any]) -> P:
         
         profile_data = data["profile"]
         
@@ -92,12 +98,13 @@ class Profile:
         
         self._id = profile_data[0]
         self._mgr = mgr
-        self._character = mgr.guild.staff_manager.get_character(profile_data[2])
+        self._user = await mgr.guild.get_or_fetch_member_or_user(profile_data[2])
         
         self._details = ProfileDetails.load(self, data["details"])
         self._aag = ProfileAtAGlance.load(self, data["aag"])
         self._personality = ProfilePersonality.load(self, data["personality"])
         self._images = ProfileImages.load(self, data["images"])
+        self._preferences = ProfilePreferences.load(self, data["preferences"])
         
         self._post_url = profile_data[3]
         self._post_msg = None
@@ -123,9 +130,15 @@ class Profile:
     
 ################################################################################
     @property
+    def user(self) -> User:
+        
+        return self._user
+    
+################################################################################
+    @property
     def name(self) -> str:
         
-        return self._details.name or self._character.user.display_name
+        return self._details.name or self.user.display_name
     
 ################################################################################
     @property
@@ -165,6 +178,12 @@ class Profile:
     
 ################################################################################
     @property
+    def preferences(self) -> ProfilePreferences:
+        
+        return self._preferences
+    
+################################################################################
+    @property
     def color(self) -> Optional[Colour]:
         
         return self._details.color or Colour.embed_background()
@@ -172,7 +191,7 @@ class Profile:
 ################################################################################
     def is_complete(self) -> bool:
         
-        return self._mgr.staff_requirements.check(self)
+        return self._mgr.profile_requirements.check(self)
     
 ################################################################################
     async def post_message(self) -> Optional[Message]:
@@ -188,7 +207,7 @@ class Profile:
         self.bot.database.update.profile(self)
 
 ################################################################################
-    async def main_menu(self, interaction: Interaction) -> None:
+    async def menu(self, interaction: Interaction) -> None:
         
         embed = U.make_embed(
             title=f"__Profile Menu for `{self.name}`__",
@@ -203,12 +222,13 @@ class Profile:
         await view.wait()
     
 ################################################################################
-    def compile(self) -> Tuple[Embed, Optional[Embed]]:
+    def compile(self) -> Tuple[Embed, Optional[Embed], Optional[Embed]]:
 
         char_name, url, color, jobs, rates_field = self._details.compile()
         ataglance = self._aag.compile()
         likes, dislikes, personality, aboutme = self._personality.compile()
         thumbnail, main_image, additional_imgs = self._images.compile()
+        preferences = self._preferences.compile()
 
         if char_name is None:
             char_name = f"Character Name: `Not Set`"
@@ -240,7 +260,7 @@ class Profile:
             fields=fields
         )
 
-        return main_profile, aboutme
+        return main_profile, preferences, aboutme
     
 ################################################################################
     async def main_details_menu(self, interaction: Interaction) -> None:
@@ -253,9 +273,35 @@ class Profile:
         await self._aag.menu(interaction)
     
 ################################################################################
-    async def personality_menu(self, interaction: Interaction) -> None:
+    async def personality_preferences_menu(self, interaction: Interaction) -> None:
+        
+        prompt = U.make_embed(
+            title="__Personality/Preferences Menu__",
+            description=(
+                "Select a button below to view or edit the corresponding "
+                "section of your profile!\n\n"
+                
+                "__**Personality:**__\n"
+                "This section is where you can list your likes, dislikes, and a little "
+                "bit about yourself!\n\n"
+                
+                "__**Preferences:**__\n"
+                "This section is where you can list your favorite in-game activities and "
+                "your bedroom preferences!"
+            )
+        )
+        view = PersonalityPreferencePickView(interaction.user, self)
+        
+        await interaction.respond(embed=prompt, view=view)
+        await view.wait()
+        
+        if not view.complete or view.value is None:
+            return
 
-        await self._personality.menu(interaction)
+        if view.value is True:
+            await self._personality.menu(interaction)
+        else:
+            await self._preferences.menu(interaction)
     
 ################################################################################
     async def images_menu(self, interaction: Interaction) -> None:
@@ -265,16 +311,30 @@ class Profile:
 ################################################################################
     async def preview_profile(self, interaction: Interaction) -> None:
 
-        main_profile, _ = self.compile()
+        main_profile, _, _ = self.compile()
         view = CloseMessageView(interaction.user)
 
         await interaction.respond(embed=main_profile, view=view)
         await view.wait()
     
 ################################################################################
+    async def preview_preferences(self, interaction: Interaction) -> None:
+
+        _, prefs, _ = self.compile()
+        if prefs is None:
+            error = PrefsNotSet()
+            await interaction.respond(embed=error, ephemeral=True)
+            return
+        
+        view = CloseMessageView(interaction.user)
+
+        await interaction.respond(embed=prefs, view=view)
+        await view.wait()
+    
+################################################################################
     async def preview_aboutme(self, interaction: Interaction) -> None:
 
-        _, aboutme = self.compile()
+        _, _, aboutme = self.compile()
         if aboutme is None:
             error = AboutMeNotSet()
             await interaction.respond(embed=error, ephemeral=True)
@@ -289,12 +349,14 @@ class Profile:
     async def post(self, interaction: Interaction) -> None:
 
         error = None
+        if not await self._mgr.allowed_to_post(interaction.user):
+            error = ProfileRoleNotOwned()
         if not self._mgr.post_channels:
             error = ProfileChannelsNotSet()
-        if not self.is_complete():
-            error = ProfileIncomplete(self, self._mgr.staff_requirements.active_requirements)
         if len(self) > MAX_EMBED_LENGTH:
-            error = ExceedsMaxLength(len(self))
+            error = ExceedsMaxLength(len(self), MAX_EMBED_LENGTH)
+        if not self.is_complete():
+            error = ProfileIncomplete(self, self._mgr.profile_requirements.active_requirements)
             
         if error is not None:
             await interaction.respond(embed=error, ephemeral=True)
@@ -304,33 +366,39 @@ class Profile:
             await interaction.respond(embed=self.success_message())
             return
         
-        prompt = U.make_embed(
-            title="__Select Profile Posting Channel__",
-            description=(
-                "Select the channel you would like to post your profile in!\n"
-                "Please note that you can only post in one channel at a time."
+        options = [
+            SelectOption(
+                label=channel.name,
+                value=str(channel.id),
             )
-        )
-        view = FroggeSelectView(
-            owner=interaction.user,
-            options=[
-                SelectOption(
-                    label=channel.name,
-                    value=str(channel.id),
+            for channel in await self._mgr.post_channels_for(interaction.user)
+        ][:25]
+        
+        if len(options) > 1:
+            prompt = U.make_embed(
+                title="__Select Profile Posting Channel__",
+                description=(
+                    "Select the channel you would like to post your profile in!\n"
+                    "Please note that you can only post in one channel at a time."
                 )
-                for channel in self._mgr.post_channels
-            ]
-        )
-        
-        await interaction.respond(embed=prompt, view=view)
-        await view.wait()
-        
-        if not view.complete or view.value is False:
-            return
-        
-        channel: Union[TextChannel, ForumChannel] = (  # type: ignore
-            await self._mgr.guild.get_or_fetch_channel(int(view.value)) 
-        )  
+            )
+            view = FroggeSelectView(
+                owner=interaction.user,
+                options=options
+            )
+            
+            await interaction.respond(embed=prompt, view=view)
+            await view.wait()
+            
+            if not view.complete or view.value is False:
+                return
+            
+            channel: Union[TextChannel, ForumChannel] = (  # type: ignore
+                await self._mgr.guild.get_or_fetch_channel(int(view.value)) 
+            )  
+        else:
+            channel = await self._mgr.guild.get_or_fetch_channel(options[0].value)  # type: ignore
+
         if channel is None:
             error = ChannelMissing()
             await interaction.respond(embed=error, ephemeral=True)
@@ -416,6 +484,7 @@ class Profile:
                 self._aag.progress() +
                 self._personality.progress() +
                 self._images.progress() +
+                self._preferences.progress() +
                 f"{U.draw_line(extra=15)}\n"
                 f"{em_final} -- Finalize"
             ),

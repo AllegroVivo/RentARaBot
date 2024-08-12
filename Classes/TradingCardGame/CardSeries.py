@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, List, Type, TypeVar, Any, Tuple, Dict
+from typing import TYPE_CHECKING, Optional, List, Type, TypeVar, Any, Dict, Tuple
 
-from discord import SelectOption, Interaction, Embed
+from discord import SelectOption, Interaction, Embed, EmbedField
+from discord.ext.pages import Page
 
+from Assets import BotEmojis, BotImages
 from Errors import MaxCardsReached
-from .TradingCard import TradingCard
-from UI.Common import FroggeSelectView
 from UI.TradingCardGame import CardSelectView
-from Utilities.Constants import *
 from Utilities import Utilities as U
+from Utilities.Constants import *
+from .TradingCard import TradingCard
 
 if TYPE_CHECKING:
-    from Classes import CardManager, RentARaBot
+    from Classes import CardManager, RentARaBot, CardCollection
 ################################################################################
 
 __all__ = ("CardSeries", )
@@ -78,6 +79,20 @@ class CardSeries:
         return next((c for c in self._cards if c.id == card_id), None)
         
 ################################################################################
+    def __len__(self) -> int:
+        
+        max_idx = 0
+        for card in self._cards:
+            try:
+                index = int(card.index)
+                if index > max_idx:
+                    max_idx = index
+            except ValueError:
+                continue
+            
+        return max_idx
+    
+################################################################################
     @property
     def bot(self) -> RentARaBot:
         
@@ -119,11 +134,6 @@ class CardSeries:
         
         self._cards.sort(key=lambda c: c.index)
         return self._cards
-    
-################################################################################
-    def __len__(self) -> int:
-
-        return len(self._cards)
     
 ################################################################################
     def select_option(self) -> SelectOption:
@@ -189,5 +199,33 @@ class CardSeries:
             return
         
         await card.remove(interaction)
+
+################################################################################
+    def get_card_totals(self, coll: CardCollection) -> Tuple[int, int]:
         
+        num_owned = total_owned = 0
+        for card in self.cards:
+            qty = coll[card]
+            if qty is not None:
+                total_owned += qty.quantity
+                num_owned += 1
+                
+        return num_owned, total_owned
+    
+################################################################################
+    def card_collection_strs(self, coll: CardCollection) -> List[str]:
+
+        card_strs = [f"__{self.name}__"]
+        num_owned = total_owned = 0
+        for card in self.cards:
+            qty = coll[card]
+            if qty is not None:
+                total_owned += qty.quantity
+                num_owned += 1
+                card_strs.append(f"`{card.index}` {BotEmojis.CheckGreen} {card.name} *(x{qty.quantity})*")
+            else:
+                card_strs.append(f"`{card.index}` {BotEmojis.CheckGray} {card.name}")
+                
+        return card_strs
+    
 ################################################################################

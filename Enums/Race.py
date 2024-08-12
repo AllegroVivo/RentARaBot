@@ -1,8 +1,6 @@
-from typing import List
-
-from discord import SelectOption
-
 from ._Enum import FroggeEnum
+################################################################################
+__all__ = ("Race",)
 ################################################################################
 class Race(FroggeEnum):
 
@@ -29,5 +27,5 @@ class Race(FroggeEnum):
             return "Miqo'te"
         else:
             return self.name
-        
+    
 ################################################################################

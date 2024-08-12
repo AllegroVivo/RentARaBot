@@ -17,8 +17,8 @@ class AdditionalImageFrogginator(Frogginator):
     
     def __init__(self, pages: List[Page], images: ProfileImages):
         
-        self.ctx: ProfileImages = images
         super().__init__(pages=pages, loop_pages=True, default_button_row=3)
+        self.ctx: ProfileImages = images
         
 ################################################################################
  

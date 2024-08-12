@@ -1,11 +1,8 @@
 from __future__ import annotations
 from typing import List, Optional
-from typing import TYPE_CHECKING
 from discord import SelectOption
 
 from ._Enum import FroggeEnum
-if TYPE_CHECKING:
-    from Utilities import DataCenter
 ################################################################################
 class GameWorld(FroggeEnum):
 

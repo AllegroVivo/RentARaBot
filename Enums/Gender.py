@@ -1,7 +1,3 @@
-from typing import List
-
-from discord import SelectOption
-
 from ._Enum import FroggeEnum
 ################################################################################
 class Gender(FroggeEnum):
@@ -21,4 +17,12 @@ class Gender(FroggeEnum):
         return self.name
     
 ################################################################################
+    @property
+    def short_name(self) -> str:
+        
+        if self.value == 3:
+            return "NB"
+        
+        return self.proper_name
     
+################################################################################

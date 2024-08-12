@@ -557,3 +557,55 @@ class Utilities:
         return e in emoji.EMOJI_DATA
 
 ################################################################################
+    @staticmethod
+    def split_lines(str_list: List[str], max_length: int) -> str:
+        
+        result = []
+        current_line = ""
+    
+        for string in str_list:
+            # If adding the next string would exceed the max_length, start a new line
+            if len(current_line) + len(string) + (2 if current_line else 0) > max_length:
+                result.append(current_line)
+                current_line = string
+            else:
+                if current_line:
+                    current_line += ", "
+                current_line += string
+    
+        # Add the last line if there is any content left
+        if current_line:
+            result.append(current_line)
+    
+        return "\n".join(result)
+    
+################################################################################
+    @staticmethod
+    def list_to_columns(
+        items: List[str], 
+        columns: int, 
+        add_markdown: bool = True,
+        add_bullet: bool = True
+    ) -> List[str]:
+
+        # Initialize a list of strings for each column
+        column_strs = ["" for _ in range(columns)]
+
+        # Distribute the items across the columns
+        for i, item in enumerate(items):
+            if add_markdown:
+                item = f"`{item}`"
+            else:
+                item = f"{item}"
+            if add_bullet:
+                item = f"* {item}"
+            column_strs[i % columns] += f"{item}\n"
+
+        # Handle the case where a column might be empty
+        for i in range(columns):
+            if not column_strs[i]:
+                column_strs[i] = "`No Items`"
+
+        return column_strs
+    
+################################################################################

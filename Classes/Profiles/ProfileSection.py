@@ -44,6 +44,6 @@ class ProfileSection:
     @staticmethod
     def progress_emoji(attribute: Optional[Any]) -> str:
 
-        return str(BotEmojis.Cross) if not attribute else str(BotEmojis.Check)
+        return str(BotEmojis.CheckGray) if not attribute else str(BotEmojis.CheckGreen)
 
 ################################################################################

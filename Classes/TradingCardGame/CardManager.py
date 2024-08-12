@@ -65,6 +65,12 @@ class CardManager:
         return self._series_list
     
 ################################################################################
+    @property
+    def total_cards(self) -> int:
+        
+        return sum(len(series) for series in self._series_list) 
+    
+################################################################################
     def status(self) -> Embed:
         
         totals_str = ""
@@ -175,7 +181,7 @@ class CardManager:
     def get_card(self, card_id: str) -> Optional[TradingCard]:
         
         for series in self._series_list:
-            for card in series:
+            for card in series.cards:
                 if card.id == card_id:
                     return card
     

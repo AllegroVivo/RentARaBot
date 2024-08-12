@@ -5,7 +5,8 @@ from discord import (
     Cog,
     Option,
     SlashCommandOptionType,
-    SlashCommandGroup
+    SlashCommandGroup,
+    InteractionContextType
 )
 
 if TYPE_CHECKING:
@@ -22,7 +23,7 @@ class Admin(Cog):
     admin = SlashCommandGroup(
         name="admin",
         description="Administrative commands for bot configuration.",
-        guild_only=True
+        contexts=[InteractionContextType.guild]
     )
     
 ################################################################################
@@ -30,7 +31,7 @@ class Admin(Cog):
         name="forms",
         description="Manage forms for the bot."
     )
-    async def forms_menu(self,  ctx: ApplicationContext) -> None:
+    async def forms_menu(self, ctx: ApplicationContext) -> None:
 
         guild = self.bot[ctx.guild_id]
         await guild.forms_manager.main_menu(ctx.interaction)
@@ -40,10 +41,30 @@ class Admin(Cog):
         name="cards",
         description="Manage the bot's Trading Card Game module."
     )
-    async def cards_menu(self,  ctx: ApplicationContext) -> None:
+    async def cards_menu(self, ctx: ApplicationContext) -> None:
 
         guild = self.bot[ctx.guild_id]
         await guild.card_manager.main_menu(ctx.interaction)
+        
+################################################################################
+    @admin.command(
+        name="verification",
+        description="Manage the bot's Verification module."
+    )
+    async def verification_menu(self, ctx: ApplicationContext) -> None:
+
+        guild = self.bot[ctx.guild_id]
+        await guild.verification_manager.main_menu(ctx.interaction)
+        
+################################################################################
+    @admin.command(
+        name="profiles",
+        description="Manage the bot's Profiles module."
+    )
+    async def profiles_menu(self, ctx: ApplicationContext) -> None:
+
+        guild = self.bot[ctx.guild_id]
+        await guild.profile_manager.main_menu(ctx.interaction)
         
 ################################################################################
 def setup(bot: "RentARaBot") -> None:

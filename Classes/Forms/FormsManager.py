@@ -22,6 +22,8 @@ class FormsManager:
     __slots__ = (
         "_state",
         "_forms",
+        "_dating",
+        "_battle",
     )
     
     MAX_FORMS = 20

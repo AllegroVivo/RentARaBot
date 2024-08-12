@@ -6,6 +6,7 @@ from discord import Attachment, Bot, TextChannel
 
 from Classes.Database import Database
 from .GuildManager import GuildManager
+from .LodestoneClient import LodestoneClient
 
 if TYPE_CHECKING:
     from Classes import GuildData
@@ -20,6 +21,7 @@ class RentARaBot(Bot):
         "_img_dump",
         "_db",
         "_guild_mgr",
+        "_lodestone",
     )
     
     IMAGE_DUMP = 991902526188302427
@@ -33,6 +35,7 @@ class RentARaBot(Bot):
 
         self._db: Database = Database(self)        
         self._guild_mgr: GuildManager = GuildManager(self)
+        self._lodestone: LodestoneClient = LodestoneClient(self)
         
 ################################################################################
     def __getitem__(self, guild_id: int) -> GuildData:
@@ -55,6 +58,12 @@ class RentARaBot(Bot):
     def guild_manager(self) -> GuildManager:
         
         return self._guild_mgr
+    
+################################################################################
+    @property
+    def lodestone(self) -> LodestoneClient:
+        
+        return self._lodestone
     
 ################################################################################
     async def load_all(self) -> None:

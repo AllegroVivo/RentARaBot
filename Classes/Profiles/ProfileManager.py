@@ -5,22 +5,23 @@ from typing import TYPE_CHECKING, List, Any, Dict, Optional, Union
 from discord import (
     EmbedField,
     Embed,
-    TextChannel,
-    ForumChannel,
     Role,
     Interaction,
-    SelectOption,
-    ChannelType
+    TextChannel,
+    ForumChannel,
+    User
 )
 
 from Utilities import Utilities as U
+from Errors import MaxItemsReached
 from UI.Common import FroggeSelectView
-from UI.Profiles import ProfileManagerMenuView
+from UI.Profiles import ProfileManagerMenuView, ProfileChannelsMenuView
 from .Profile import Profile
 from .ProfileRequirements import ProfileRequirements
+from .ProfileChannelGroup import ProfileChannelGroup
 
 if TYPE_CHECKING:
-    from Classes import GuildData, RentARaBot, Character
+    from Classes import GuildData, RentARaBot
 ################################################################################
 
 __all__ = ("ProfileManager", )
@@ -32,12 +33,10 @@ class ProfileManager:
         "_state",
         "_profiles",
         "_requirements",
-        "_staff_channels",
-        "_public_channels",
-        "_staff_roles",
+        "_channels",
     )
     
-    MAX_CHANNELS = 20
+    MAX_CHANNEL_GROUPS = 8  # (Three fields per line in the embed) 
     MAX_ROLES = 20
     
 ################################################################################
@@ -47,36 +46,20 @@ class ProfileManager:
         self._profiles: List[Profile] = []
         
         self._requirements: ProfileRequirements = ProfileRequirements(self)
-        
-        self._staff_channels: List[Union[TextChannel, ForumChannel]] = []
-        self._public_channels: List[Union[TextChannel, ForumChannel]] = []
-        
-        self._staff_roles: List[Role] = []
+        self._channels: List[ProfileChannelGroup] = []
     
 ################################################################################
     async def load_all(self, payload: Dict[str, Any]) -> None:
         
-        system_data = payload["system"]
-        staff_channels = [
-            await self.guild.get_or_fetch_channel(c) 
-            for c in system_data[1]
-        ]
-        public_channels = [
-            await self.guild.get_or_fetch_channel(c)
-            for c in system_data[2]
-        ]
-        staff_roles = [
-            await self.guild.get_or_fetch_role(r)
-            for r in system_data[3]
+        self._channels = [
+            await ProfileChannelGroup.load(self, c) 
+            for c in payload["channels"]
         ]
         
-        self._staff_channels = [c for c in staff_channels if c is not None]
-        self._public_channels = [c for c in public_channels if c is not None]
-        self._staff_roles = [r for r in staff_roles if r is not None]
-
         profiles = []
         for p in payload["profiles"]:
-            if profile := Profile.load(self, p):  # Profile is None if user is not found.
+            profile = await Profile.load(self, p)
+            if profile is not None:  # Profile is None if user is not found.
                 profiles.append(profile)
         self._profiles = profiles
         
@@ -101,32 +84,33 @@ class ProfileManager:
     
 ################################################################################
     @property
+    def guild_id(self) -> int:
+        
+        return self._state.guild_id
+    
+################################################################################
+    @property
     def profiles(self) -> List[Profile]:
         
         return self._profiles
     
 ################################################################################
     @property
-    def staff_requirements(self) -> ProfileRequirements:
+    def profile_requirements(self) -> ProfileRequirements:
         
         return self._requirements
     
 ################################################################################
     @property
-    def staff_channels(self) -> List[Union[TextChannel, ForumChannel]]:
+    def allowed_roles(self) -> List[Role]:
         
-        return self._staff_channels
-    
-    @property
-    def public_channels(self) -> List[Union[TextChannel, ForumChannel]]:
-        
-        return self._public_channels
+        return [r for group in self._channels for r in group.roles]
     
 ################################################################################
     @property
-    def staff_roles(self) -> List[Role]:
+    def post_channels(self) -> List[Union[TextChannel, ForumChannel]]:
         
-        return self._staff_roles
+        return [c for group in self._channels for c in group.channels]
     
 ################################################################################
     def update(self) -> None:
@@ -136,9 +120,11 @@ class ProfileManager:
 ################################################################################
     def status(self) -> Embed:
         
-        channel_str = "\n".join([f"* {c.mention} *(Staff)*" for c in self.staff_channels])
-        channel_str += "\n"
-        channel_str += "\n".join([f"* {c.mention} *(Public)*" for c in self.public_channels])
+        channels = []
+        roles = []
+        for group in self._channels:
+            channels.extend(group.channels)
+            roles.extend(group.roles)
         
         posted_profiles = [p for p in self._profiles if p.post_url is not None]
         posted_names = [p.name for p in posted_profiles]
@@ -157,19 +143,14 @@ class ProfileManager:
         
         return U.make_embed(
             title="__Profile System Management__",
-            description=f"**[`{len(self._requirements)}/17`]** Requirements Active",
+            description=(
+                f"**[`{len(self._requirements)}/17`]** Profile Requirements Selected\n\n"
+                
+                f"**[`{len(self._channels)}`]** Channel Groups Defined with...\n"
+                f"**[`{len(channels)}`]** Channels available for posting by...\n"
+                f"**[`{len(roles)}`]** Roles\n"
+            ),
             fields=[
-                EmbedField(
-                    name="__Channels__",
-                    value=channel_str,
-                    inline=True
-                ),
-                EmbedField(
-                    name="__Staff Roles__",
-                    value="\n".join([f"* {r.mention}" for r in self.staff_roles]),
-                    inline=True
-                ),
-                EmbedField("** **", "** **", inline=False),
                 EmbedField(
                     name="__Posted Profiles__",
                     value=name_str1,
@@ -193,33 +174,103 @@ class ProfileManager:
         await view.wait()
     
 ################################################################################
-    def new_profile(self, character: Character) -> Profile:
+    async def user_menu(self, interaction: Interaction) -> None:
         
-        profile = Profile.new(self, character)
+        profile = self.get_profile(interaction.user)
+        if profile is None:
+            profile = self.new_profile(interaction.user)
+            
+        await profile.menu(interaction)
+        
+################################################################################    
+    def get_profile(self, user: User) -> Optional[Profile]:
+        
+        return next((p for p in self._profiles if p.user.id == user.id), None)
+    
+################################################################################
+    def new_profile(self, user: User) -> Profile:
+        
+        profile = Profile.new(self, user)
         self._profiles.append(profile)
         return profile
 
 ################################################################################
-    async def add_channel(self, interaction: Interaction) -> None:
+    def channel_status(self) -> Embed:
         
-        options = [
-            SelectOption(
-                label="Staff Channel",
-                value="Staff",
-                description="A channel for staff to post profiles.",
-            ),
-            SelectOption(
-                label="Public Channel",
-                value="Public",
-                description="A channel for public users to post profiles."
-            ),
-        ]
+        fields = []
+        for i, group in enumerate(self._channels):
+            channel_str = "\n".join([f"* {c.mention}" for c in group.channels])
+            role_str = "\n".join([f"* {r.mention}" for r in group.roles])
+            
+            fields.append(
+                EmbedField(
+                    name=f"__Channel Group {i + 1}__",
+                    value=(
+                        f"__Channels__\n"
+                        f"{channel_str}"
+                    ),
+                    inline=True
+                )
+            )
+            fields.append(
+                EmbedField(
+                    name="** **",
+                    value=(
+                        f"__Roles__\n"
+                        f"{role_str}"
+                    ),
+                    inline=True
+                )
+            )
+            fields.append(EmbedField("** **", "** **", True))
+            
+        if not fields:
+            fields.append(
+                EmbedField(
+                    name="__Channel Groups__",
+                    value="`No Posting Channels Defined`",
+                    inline=False
+                )
+            )
+        
+        return U.make_embed(
+            title="__Profile Channel Associations__",
+            fields=fields,
+        )
+        
+################################################################################
+    async def channels_menu(self, interaction: Interaction) -> None:
+        
+        embed = self.channel_status()
+        view = ProfileChannelsMenuView(interaction.user, self)
+        
+        await interaction.respond(embed=embed, view=view)
+        await view.wait()
+    
+################################################################################
+    async def add_channel_group(self, interaction: Interaction) -> None:
+        
+        if len(self._channels) >= self.MAX_CHANNEL_GROUPS:
+            error = MaxItemsReached("Channel Groups", self.MAX_CHANNEL_GROUPS)
+            await interaction.respond(embed=error, ephemeral=True)
+            return
+        
+        new_group = ProfileChannelGroup.new(self)
+        self._channels.append(new_group)
+        
+        await new_group.menu(interaction)
+        
+################################################################################
+    async def modify_channel_group(self, interaction: Interaction) -> None:
         
         prompt = U.make_embed(
-            title="__Select Channel Type__",
-            description="Please select the type of channel you would like to add.",
+            title="__Modify Channel Group__",
+            description="Please select the channel group you would like to modify."
         )
-        view = FroggeSelectView(interaction.user, options)
+        view = FroggeSelectView(
+            owner=interaction.user,
+            options=[g.select_option() for g in self._channels]
+        )
         
         await interaction.respond(embed=prompt, view=view)
         await view.wait()
@@ -227,17 +278,62 @@ class ProfileManager:
         if not view.complete or view.value is False:
             return
         
-        channel_type = view.value
+        group = next((g for g in self._channels if g.id == view.value), None)
+        if group is None:
+            return
+        
+        await group.menu(interaction)
+        
+################################################################################
+    async def remove_channel_group(self, interaction: Interaction) -> None:
         
         prompt = U.make_embed(
-            title="__Add Profile Post Channel__",
-            description="Please mention the channel you would like to add.",
+            title="__Remove Channel Group__",
+            description="Please select the channel group you would like to remove."
         )
-        channel = await U.listen_for(
-            interaction=interaction,
-            prompt=prompt, 
-            mentionable_type=U.MentionableType.Channel, 
-            channel_restrictions=[ChannelType.text, ChannelType.forum]
+        view = FroggeSelectView(
+            owner=interaction.user,
+            options=[g.select_option() for g in self._channels]
         )
         
+        await interaction.respond(embed=prompt, view=view)
+        await view.wait()
+        
+        if not view.complete or view.value is False:
+            return
+        
+        group = next((g for g in self._channels if g.id == view.value), None)
+        if group is None:
+            return
+        
+        await group.remove(interaction)
+        
+################################################################################
+    async def requirements_menu(self, interaction: Interaction) -> None:
+        
+        await self._requirements.menu(interaction)
+        
+################################################################################
+    async def allowed_to_post(self, user: User) -> bool:
+        
+        member = await self.guild.get_or_fetch_member(user.id)
+        if member is None:
+            return False
+        
+        return any(r in member.roles for r in self.allowed_roles)
+
+################################################################################
+    async def post_channels_for(self, user: User) -> List[Union[TextChannel, ForumChannel]]:
+        
+        member = await self.guild.get_or_fetch_member(user.id)
+        if member is None:
+            return []
+        
+        ret = []
+        for group in self._channels:
+            if any(r in member.roles for r in group.roles):
+                ret.extend(group.channels)
+                
+        return ret
+
 ################################################################################
