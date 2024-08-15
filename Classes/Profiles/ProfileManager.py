@@ -9,7 +9,7 @@ from discord import (
     Interaction,
     TextChannel,
     ForumChannel,
-    User
+    User, Member
 )
 
 from Utilities import Utilities as U
@@ -90,9 +90,14 @@ class ProfileManager:
     
 ################################################################################
     @property
-    def profiles(self) -> List[Profile]:
+    def all_profiles(self) -> List[Profile]:
         
         return self._profiles
+    
+    @property
+    def public_profiles(self) -> List[Profile]:
+        
+        return [p for p in self._profiles if p.is_public]
     
 ################################################################################
     @property
@@ -123,8 +128,12 @@ class ProfileManager:
         channels = []
         roles = []
         for group in self._channels:
-            channels.extend(group.channels)
-            roles.extend(group.roles)
+            for channel in group.channels:
+                if channel not in channels:
+                    channels.append(channel)
+            for role in group.roles:
+                if role not in roles:
+                    roles.append(role)
         
         posted_profiles = [p for p in self._profiles if p.post_url is not None]
         posted_names = [p.name for p in posted_profiles]
@@ -323,7 +332,7 @@ class ProfileManager:
         return any(r in member.roles for r in self.allowed_roles)
 
 ################################################################################
-    async def post_channels_for(self, user: User) -> List[Union[TextChannel, ForumChannel]]:
+    async def post_channels_for(self, user: User, private: bool) -> List[Union[TextChannel, ForumChannel]]:
         
         member = await self.guild.get_or_fetch_member(user.id)
         if member is None:
@@ -332,8 +341,32 @@ class ProfileManager:
         ret = []
         for group in self._channels:
             if any(r in member.roles for r in group.roles):
-                ret.extend(group.channels)
+                if private and group.is_private:
+                    ret.extend(group.channels)
+                elif not private and not group.is_private:
+                    ret.extend(group.channels)
                 
         return ret
+
+################################################################################
+    async def user_matching(self, interaction: Interaction) -> None:
+        
+        profile = self.get_profile(interaction.user)
+        if profile is None:
+            profile = self.new_profile(interaction.user)
+            
+        await profile.run_matching_routine(interaction, self.public_profiles)
+
+################################################################################
+    async def revive_profiles(self) -> None:
+        
+        for profile in self.public_profiles:
+            await profile.revive_if_necessary()
+
+################################################################################
+    async def member_left(self, member: Member) -> None:
+        
+        if profile := self.get_profile(member):  # type: ignore
+            await profile.delete_profile_post()
 
 ################################################################################

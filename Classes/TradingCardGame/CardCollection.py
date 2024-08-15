@@ -7,8 +7,9 @@ from Enums import CardRarity
 from discord.ext.pages import Page
 from Assets import BotEmojis, BotImages
 from .CardCount import CardCount
+from .DeckManager import DeckManager
 from UI.Common import FroggeSelectView, Frogginator
-from UI.TradingCardGame import CardCollectionMenuView, CardSelectView
+from UI.TradingCardGame import CardCollectionMenuView, CardSelectView, UserCollectionMenuView
 from Utilities import Utilities as U
 
 if TYPE_CHECKING:
@@ -28,6 +29,7 @@ class CardCollection:
         "_user",
         "_cards",
         "_boosters",
+        "_deck_mgr",
     )
     
 ################################################################################
@@ -37,7 +39,8 @@ class CardCollection:
         _id: str,
         user: User, 
         cards: Optional[List[CardCount]] = None,
-        boosters: Optional[int] = None
+        boosters: Optional[int] = None,
+        deck_mgr: Optional[DeckManager] = None
     ) -> None:
 
         self._id: str = _id
@@ -45,6 +48,7 @@ class CardCollection:
         
         self._user: User = user
         self._cards: List[CardCount] = cards or []
+        self._deck_mgr: DeckManager = deck_mgr or DeckManager(self)
         
         self._boosters: int = boosters or 0
     
@@ -68,6 +72,7 @@ class CardCollection:
         
         self._user = await mgr.guild.get_or_fetch_member_or_user(data["collection"][2])
         self._cards = [CardCount.load(self, d) for d in data["cards"]]
+        self._deck_mgr = DeckManager.load(self, data["decks"])
         
         self._boosters = cdata[3]
         
@@ -105,6 +110,12 @@ class CardCollection:
     def card_manager(self) -> CardManager:
         
         return self._mgr._mgr.card_manager
+    
+################################################################################
+    @property
+    def deck_manager(self) -> DeckManager:
+        
+        return self._deck_mgr
     
 ################################################################################
     @property
@@ -197,7 +208,7 @@ class CardCollection:
         )
         
 ################################################################################
-    async def menu(self, interaction: Interaction) -> None:
+    async def admin_menu(self, interaction: Interaction) -> None:
         
         embed = self.status()
         view = CardCollectionMenuView(interaction.user, self)
@@ -214,7 +225,7 @@ class CardCollection:
                 "Please select the series of the card you would like to add."
             )
         )
-        series = await self.card_manager._select_series(interaction, prompt)
+        series = await self.card_manager.select_series(interaction, prompt)
         if series is None:
             return
         
@@ -224,16 +235,11 @@ class CardCollection:
                 "Please select the card you would like to add."
             )
         )
-        card = await series._select_card(interaction, prompt)
+        card = await series.select_card(interaction, prompt)
         if card is None:
             return
         
-        count_obj = self[card]
-        if count_obj is None:
-            count_obj = CardCount.new(self, card)
-            self._cards.append(count_obj)
-        else:
-            count_obj.quantity += 1
+        self._add_card(card)
             
         confirm = U.make_embed(
             title="__Card Added__",
@@ -252,7 +258,7 @@ class CardCollection:
                 "Please select the series of the card you would like to remove."
             )
         )
-        series = await self.card_manager._select_series(interaction, prompt)
+        series = await self.card_manager.select_series(interaction, prompt)
         if series is None:
             return
         
@@ -324,7 +330,27 @@ class CardCollection:
             )
             await interaction.respond(embed=error, ephemeral=True)
             return
+        
+        cards = [
+            cfg.get_card(self) for cfg in self._mgr.booster_config.card_configs
+        ]
+        
+        self.booster_packs -= 1
+        
+        for card in cards:
+            self._add_card(card)
+            await interaction.respond(embed=card.status())
 
+################################################################################
+    def _add_card(self, card: TradingCard) -> None:
+        
+        count_obj = self[card]
+        if count_obj is None:
+            count_obj = CardCount.new(self, card)
+            self._cards.append(count_obj)
+        else:
+            count_obj.quantity += 1
+            
 ################################################################################
     async def view(self, interaction: Interaction) -> None:
         
@@ -345,7 +371,7 @@ class CardCollection:
                 thumbnail_url=BotImages.Pokedex,
                 footer_text=(
                     f"Total: {total_owned} | "
-                    f"Unique: {num_owned}/{len(self)}"
+                    f"Unique: {num_owned}/{self.card_manager.total_cards}"
                 )
             )
             pages.append(Page(embeds=[embed]))
@@ -353,4 +379,18 @@ class CardCollection:
         froggintor = Frogginator(pages)
         await froggintor.respond(interaction)
         
+################################################################################
+    async def edit_decks(self, interaction: Interaction) -> None:
+        
+        await self.deck_manager.main_menu(interaction)
+
+################################################################################
+    async def user_menu(self, interaction: Interaction) -> None:
+
+        embed = self.status()
+        view = UserCollectionMenuView(interaction.user, self)
+
+        await interaction.respond(embed=embed, view=view)
+        await view.wait()
+
 ################################################################################

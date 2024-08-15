@@ -145,7 +145,7 @@ class CardSeries:
         )
     
 ################################################################################
-    async def _select_card(self, interaction: Interaction, prompt: Embed) -> Optional[TradingCard]:
+    async def select_card(self, interaction: Interaction, prompt: Embed) -> Optional[TradingCard]:
         
         view = CardSelectView(interaction.user, [c.select_option() for c in self.cards])
         
@@ -179,7 +179,7 @@ class CardSeries:
                 "Please select the card you want to modify."
             ),
         )
-        card = await self._select_card(interaction, prompt)
+        card = await self.select_card(interaction, prompt)
         if card is None:
             return
         
@@ -194,7 +194,7 @@ class CardSeries:
                 "Please select the card you want to remove."
             ),
         )
-        card = await self._select_card(interaction, prompt)
+        card = await self.select_card(interaction, prompt)
         if card is None:
             return
         
@@ -214,18 +214,23 @@ class CardSeries:
     
 ################################################################################
     def card_collection_strs(self, coll: CardCollection) -> List[str]:
+        
+        if not self.cards:
+            return []
 
         card_strs = [f"__{self.name}__"]
-        num_owned = total_owned = 0
         for card in self.cards:
             qty = coll[card]
             if qty is not None:
-                total_owned += qty.quantity
-                num_owned += 1
                 card_strs.append(f"`{card.index}` {BotEmojis.CheckGreen} {card.name} *(x{qty.quantity})*")
             else:
                 card_strs.append(f"`{card.index}` {BotEmojis.CheckGray} {card.name}")
                 
         return card_strs
     
+################################################################################
+    def get_card_by_index(self, index: str) -> Optional[TradingCard]:
+        
+        return next((c for c in self.cards if c.index.lower() == index.lower()), None)
+            
 ################################################################################

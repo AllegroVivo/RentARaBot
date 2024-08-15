@@ -68,6 +68,12 @@ class CollectionManager:
         return self._mgr.card_manager
     
 ################################################################################
+    @property
+    def booster_config(self) -> BoosterPackConfig:
+        
+        return self._booster_config
+    
+################################################################################
     async def main_menu(self, interaction: Interaction) -> None:
         
         embed = U.make_embed(
@@ -101,7 +107,7 @@ class CollectionManager:
             return
         
         collection = self._get_collection(user)
-        await collection.menu(interaction)
+        await collection.admin_menu(interaction)
     
 ################################################################################
     async def view_collection(self, interaction: Interaction) -> None:
@@ -123,10 +129,10 @@ class CollectionManager:
         await self._booster_config.main_menu(interaction)
                     
 ################################################################################
-    async def user_ctx_menu(self, interaction: Interaction, user: User) -> None:
+    async def admin_ctx_menu(self, interaction: Interaction, user: User) -> None:
 
         collection = self._get_collection(user)
-        await collection.menu(interaction)
+        await collection.admin_menu(interaction)
 
 ################################################################################
     async def open_booster(self, interaction: Interaction) -> None:
@@ -135,4 +141,9 @@ class CollectionManager:
         await collection.open_booster(interaction)
 
 ################################################################################
-    
+    async def user_menu(self, interaction: Interaction) -> None:
+
+        collection = self._get_collection(interaction.user)
+        await collection.user_menu(interaction)
+        
+################################################################################

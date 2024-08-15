@@ -71,6 +71,12 @@ class CardManager:
         return sum(len(series) for series in self._series_list) 
     
 ################################################################################
+    @property
+    def all_cards(self) -> List[TradingCard]:
+        
+        return [card for series in self._series_list for card in series.cards]
+    
+################################################################################
     def status(self) -> Embed:
         
         totals_str = ""
@@ -102,7 +108,7 @@ class CardManager:
         await view.wait()
     
 ################################################################################
-    async def _select_series(self, interaction: Interaction, prompt: Embed) -> Optional[CardSeries]:
+    async def select_series(self, interaction: Interaction, prompt: Embed) -> Optional[CardSeries]:
 
         view = FroggeSelectView(interaction.user, [s.select_option() for s in self._series_list])
         
@@ -123,7 +129,7 @@ class CardManager:
                 "Please select the series you want to add the new card to."
             ),
         )
-        series = await self._select_series(interaction, prompt)
+        series = await self.select_series(interaction, prompt)
         if series is None:
             return
         
@@ -138,7 +144,7 @@ class CardManager:
                 "Please select the series of the card you wish to modify."
             ),
         )
-        series = await self._select_series(interaction, prompt)
+        series = await self.select_series(interaction, prompt)
         if series is None:
             return
         
@@ -153,7 +159,7 @@ class CardManager:
                 "Please select the series of the card you wish to remove."
             ),
         )
-        series = await self._select_series(interaction, prompt)
+        series = await self.select_series(interaction, prompt)
         if series is None:
             return
         
@@ -184,5 +190,15 @@ class CardManager:
             for card in series.cards:
                 if card.id == card_id:
                     return card
+    
+################################################################################
+    def get_series_by_order(self, order: int) -> Optional[CardSeries]:
+        
+        return next((s for s in self._series_list if s.order == order), None)
+            
+################################################################################
+    def get_cards_by_name(self, name: str) -> List[TradingCard]:
+        
+        return [card for card in self.all_cards if card.name.lower() == name.lower()]
     
 ################################################################################

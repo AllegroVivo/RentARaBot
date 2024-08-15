@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING, Type, TypeVar, Any, Dict, List, Optional
 
 from discord import Embed, EmbedField, Interaction, SelectOption
@@ -11,7 +12,7 @@ from UI.TradingCardGame import BoosterCardConfigMenuView
 from .RarityWeight import RarityWeight
 
 if TYPE_CHECKING:
-    from Classes import BoosterPackConfig, RentARaBot
+    from Classes import BoosterPackConfig, RentARaBot, CardCollection, TradingCard, CardManager
 ################################################################################
 
 __all__ = ("BoosterCardConfig", )
@@ -80,6 +81,12 @@ class BoosterCardConfig:
     def bot(self) -> RentARaBot:
         
         return self._parent.bot
+    
+################################################################################
+    @property
+    def card_manager(self) -> CardManager:
+        
+        return self._parent._mgr.card_manager
     
 ################################################################################
     @property
@@ -262,4 +269,38 @@ class BoosterCardConfig:
         
         self.delete()
         
+################################################################################
+    def get_card(self, coll: CardCollection) -> TradingCard:
+        
+        allowed_rarities = [w.rarity for w in self.weights]
+        allowed = [c for c in self.card_manager.all_cards if c.rarity in allowed_rarities]
+        if self.always_new:
+            final_cards = [c for c in allowed if c not in coll]
+        else:
+            final_cards = allowed
+            
+        # If there are no cards to choose from, most likely meaning the user already 
+        # owns all the available cards, then return a random card from the allowed list
+        if not final_cards:
+            return random.choice(allowed)
+
+        rarity_weights = {w.rarity: w.weight for w in self.weights}
+        cards = []
+        weights = []
+    
+        for card in final_cards:
+            cards.append(card)
+            weights.append(rarity_weights[card.rarity])
+    
+        return random.choices(cards, weights=weights, k=1)[0]
+    
+################################################################################
+    def get_weight(self, rarity: CardRarity) -> int:
+        
+        rarity_weight = next((w for w in self.weights if w.rarity == rarity), None)
+        if rarity_weight is None:
+            return 0
+        
+        return rarity_weight.weight
+    
 ################################################################################

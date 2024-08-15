@@ -60,6 +60,8 @@ class DatabaseLoader(DBWorkerBranch):
             "tcg_booster_card_config",
             "tcg_booster_config",
             "tcg_rarity_weights",
+            "tcg_card_decks",
+            "tcg_deck_card_slots",
         ]
 
         ret = {}
@@ -217,6 +219,14 @@ class DatabaseLoader(DBWorkerBranch):
                     for card in payload["trading_card_counts"]
                     if card[1] == collection[0]
                 ],
+                "decks": [{
+                    "deck": deck,
+                    "cards": [
+                        card
+                        for card in payload["tcg_deck_card_slots"]
+                        if card[1] == deck[0]
+                    ],
+                } for deck in payload["tcg_card_decks"] if deck[1] == collection[0]],
             })
         for booster in payload["tcg_booster_config"]:
             ret[booster[0]]["trading_card_game"]["booster_data"]["booster_config"] = booster

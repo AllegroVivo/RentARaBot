@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from discord import Cog
+from discord import Cog, Member
 from typing import TYPE_CHECKING
 from discord.ext import tasks
 
@@ -28,6 +28,20 @@ class Internal(Cog):
 
         self.bot.guild_manager.add_guild(guild)
 
+################################################################################
+    @tasks.loop(hours=6)
+    async def revive_profiles(self) -> None:
+
+        for fguild in self.bot.guild_manager.fguilds:
+            await fguild.profile_manager.revive_profiles()
+        
+################################################################################
+    @Cog.listener("on_member_remove")
+    async def on_member_remove(self, member: Member) -> None:
+
+        guild = self.bot[member.guild.id]
+        await guild.member_left(member)
+        
 ################################################################################
 def setup(bot: RentARaBot) -> None:
 

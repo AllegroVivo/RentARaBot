@@ -89,12 +89,12 @@ class TCGManager:
 ################################################################################
     async def battle_configuration_menu(self, interaction: Interaction) -> None:
         
-        await self._battles.configuration_menu(interaction)
+        await self._battles.admin_menu(interaction)
     
 ################################################################################
-    async def user_ctx_menu(self, interaction: Interaction, user: User) -> None:
+    async def admin_ctx_menu(self, interaction: Interaction, user: User) -> None:
         
-        await self._collections.user_ctx_menu(interaction, user)
+        await self._collections.admin_ctx_menu(interaction, user)
         
 ################################################################################
     async def booster_management_menu(self, interaction: Interaction) -> None:
@@ -106,4 +106,9 @@ class TCGManager:
         
         await self._collections.open_booster(interaction)
 
+################################################################################
+    async def user_collection_menu(self, interaction: Interaction) -> None:
+        
+        await self._collections.user_menu(interaction)
+        
 ################################################################################

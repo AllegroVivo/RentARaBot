@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Type, TypeVar, Any, Tuple, Dict, Optional
 
-from discord import Embed, EmbedField, Interaction
+from discord import Embed, EmbedField, Interaction, User
 
-from Enums import Gender, FFXIVActivity, MusicGenre, ZodiacSign
+from Enums import Gender, FFXIVActivity, MusicGenre, ZodiacSign, Race
 from UI.Common import FroggeSelectView
 from .ProfileSection import ProfileSection
 from .PreferenceGroup import PreferenceGroup
@@ -121,11 +121,46 @@ class ProfilePreferences(ProfileSection):
         self.update()
         
 ################################################################################
+    @property
+    def male_prefs(self) -> PreferenceGroup:
+        
+        return self.get_preference(Gender.Male)
+    
+################################################################################
+    @property
+    def female_prefs(self) -> PreferenceGroup:
+
+        return self.get_preference(Gender.Female)
+    
+################################################################################
+    @property
+    def nb_prefs(self) -> PreferenceGroup:
+
+        return self.get_preference(Gender.NonBinary)
+    
+################################################################################
+    def is_matchable(self) -> bool:
+        
+        return all([
+            self.parent.ataglance.gender,
+            self.parent.ataglance.race,
+            self.activities,
+            self.music_prefs,
+            self.zodiac_self,
+            self.zodiac_partners,
+            (
+                self.male_prefs.is_complete or
+                self.female_prefs.is_complete or
+                self.nb_prefs.is_complete
+            )
+        ])
+        
+################################################################################
     def status(self) -> Embed:
         
-        fields = self.get_preference(Gender.Male).compile(True)
-        fields.extend(self.get_preference(Gender.Female).compile(True))
-        fields.extend(self.get_preference(Gender.NonBinary).compile(True))
+        fields = self.male_prefs.compile(True)
+        fields.extend(self.female_prefs.compile(True))
+        fields.extend(self.nb_prefs.compile(True))
         fields.extend([
             EmbedField(
                 name=U.draw_line(extra=40),
@@ -184,9 +219,9 @@ class ProfilePreferences(ProfileSection):
 ################################################################################
     def compile(self) -> Optional[Embed]:
 
-        male_group = self.get_preference(Gender.Male).compile()
-        female_group = self.get_preference(Gender.Female).compile()
-        nb_group = self.get_preference(Gender.NonBinary).compile()
+        male_group = self.male_prefs.compile()
+        female_group = self.female_prefs.compile()
+        nb_group = self.nb_prefs.compile()
         
         fields = []
         if male_group is not None:
@@ -212,7 +247,7 @@ class ProfilePreferences(ProfileSection):
             fields.extend([
                 EmbedField(name="__Favorite In-Game Activities__", value=col1, inline=True),
                 EmbedField(name="** **", value=col2, inline=True),
-                EmbedField("** **", "** **", inline=False)
+                EmbedField("** **", "", inline=False)
             ])
 
         if self.music_prefs:
@@ -243,7 +278,8 @@ class ProfilePreferences(ProfileSection):
             title="__Racial Preferences and Favorite Activities__",
             description=(
                 f"**My Zodiac Sign Is:** {str(self_emoji)} `{zodiac_self}`\n"
-                f"**My Ideal Partner Is:** {', '.join(partners)}"
+                f"**My Ideal Partner Is:** {', '.join(partners)}\n"
+                f"{U.draw_line(extra=40)}"
             ),
             fields=fields,
         )
@@ -270,20 +306,17 @@ class ProfilePreferences(ProfileSection):
 ################################################################################
     async def set_male_prefs(self, interaction: Interaction) -> None:
         
-        prefs = self.get_preference(Gender.Male)
-        await prefs.menu(interaction)
+        await self.male_prefs.menu(interaction)
         
 ################################################################################
     async def set_female_prefs(self, interaction: Interaction) -> None:
 
-        prefs = self.get_preference(Gender.Female)
-        await prefs.menu(interaction)
+        await self.female_prefs.menu(interaction)
         
 ################################################################################
     async def set_nb_prefs(self, interaction: Interaction) -> None:
 
-        prefs = self.get_preference(Gender.NonBinary)
-        await prefs.menu(interaction)
+        await self.nb_prefs.menu(interaction)
         
 ################################################################################
     async def set_activities(self, interaction: Interaction) -> None:
@@ -354,8 +387,7 @@ class ProfilePreferences(ProfileSection):
         view = FroggeSelectView(
             owner=interaction.user,
             options=ZodiacSign.select_options(),
-            multi_select=True,
-            max_values=3
+            multi_select=True
         )
         
         await interaction.respond(embed=prompt, view=view)
@@ -369,9 +401,9 @@ class ProfilePreferences(ProfileSection):
 ################################################################################
     def progress(self) -> str:
 
-        em_male = self.progress_emoji(self.get_preference(Gender.Male).is_complete)
-        em_female = self.progress_emoji(self.get_preference(Gender.Female).is_complete)
-        em_nonbin = self.progress_emoji(self.get_preference(Gender.NonBinary).is_complete)
+        em_male = self.progress_emoji(self.male_prefs.is_complete)
+        em_female = self.progress_emoji(self.female_prefs.is_complete)
+        em_nonbin = self.progress_emoji(self.nb_prefs.is_complete)
         em_activities = self.progress_emoji(self.activities)
         em_music = self.progress_emoji(self.music_prefs)
         em_zodiac_self = self.progress_emoji(self.zodiac_self)
@@ -388,5 +420,46 @@ class ProfilePreferences(ProfileSection):
             f"{em_activities} -- FFXIV Activities\n"
             f"{em_music} -- Music Preferences\n"
         )
+
+################################################################################
+    def match(self, profile: Profile) -> Optional[Tuple[User, int]]:
+
+        preferences = profile.preferences
+
+        match_value = 0
+        match_max = 0
+        
+        self_gender = self.parent.ataglance.gender
+        self_race = self.parent.ataglance.race
+        if isinstance(self_race, Race):
+            match_max += 1
+            if self_race in preferences.get_preference(self_gender).preferences:
+                match_value += 1
+            if self_race in preferences.get_preference(self_gender).restrictions:
+                match_value -= 1
+                
+        if isinstance(self_gender, Gender):
+            match_max += 1
+            if preferences.get_preference(self_gender).is_complete:
+                match_value += 1
+
+        if self.zodiac_self and self.zodiac_partners:
+            match_max += 2
+            if preferences.zodiac_self in self.zodiac_partners:
+                match_value += 1
+            if self.zodiac_self in preferences.zodiac_partners:
+                match_value += 1
+
+        for activity in preferences.activities:
+            match_max += 1
+            if activity in self.activities:
+                match_value += 1
+        for music in preferences.music_prefs:
+            match_max += 1
+            if music in self.music_prefs:
+                match_value += 1
+        
+        print(match_value, match_max)
+        return profile.user, int((match_value / match_max) * 100)
 
 ################################################################################

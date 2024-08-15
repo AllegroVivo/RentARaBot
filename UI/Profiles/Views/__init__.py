@@ -1,4 +1,5 @@
 from .AdditionalImageEditView import AdditionalImageEditView
+from .PublicPrivateView import PublicPrivateView
 from .PreferenceGroupStatusView import PreferenceGroupStatusView
 from .AdditionalImageFrogginator import AdditionalImageFrogginator
 from .GenderPronounView import GenderPronounView

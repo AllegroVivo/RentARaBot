@@ -22,6 +22,7 @@ class ProfileChannelGroupStatusView(FroggeView):
         button_list = [
             AddChannelButton(),
             RemoveChannelButton(),
+            TogglePrivateButton(),
             AddRoleButton(),
             RemoveRoleButton(),
             CloseMessageButton()
@@ -63,6 +64,24 @@ class RemoveChannelButton(FroggeButton):
         
     async def callback(self, interaction: Interaction) -> None:
         await self.view.ctx.remove_channel(interaction)
+        await self.view.edit_message_helper(
+            interaction=interaction, embed=self.view.ctx.status(), view=self.view
+        )
+        
+################################################################################
+class TogglePrivateButton(FroggeButton):
+    
+    def __init__(self) -> None:
+        
+        super().__init__(
+            style=ButtonStyle.primary,
+            label="Toggle Private Status",
+            disabled=False,
+            row=0
+        )
+        
+    async def callback(self, interaction: Interaction) -> None:
+        await self.view.ctx.toggle_private(interaction)
         await self.view.edit_message_helper(
             interaction=interaction, embed=self.view.ctx.status(), view=self.view
         )

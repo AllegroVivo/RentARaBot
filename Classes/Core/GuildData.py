@@ -205,5 +205,10 @@ class GuildData:
                 return await channel.fetch_message(int(url_parts[-1]))  # type: ignore
             except NotFound:
                 return
+
+################################################################################
+    async def member_left(self, member: Member) -> None:
         
+        await self.profile_manager.member_left(member)
+
 ################################################################################

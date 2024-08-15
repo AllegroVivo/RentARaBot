@@ -128,9 +128,10 @@ class DatabaseUpdater(DBWorkerBranch):
     def _update_profile_channel_group(self, group: ProfileChannelGroup) -> None:
         
         self.execute(
-            "UPDATE profile_channel_groups SET channel_ids = %s, role_ids = %s "
-            "WHERE _id = %s",
-            [c.id for c in group.channels], [r.id for r in group.roles], group.id
+            "UPDATE profile_channel_groups SET channel_ids = %s, role_ids = %s, "
+            "is_private = %s WHERE _id = %s",
+            [c.id for c in group.channels], [r.id for r in group.roles], 
+            group.is_private, group.id
         )
         
 ################################################################################
@@ -251,8 +252,8 @@ class DatabaseUpdater(DBWorkerBranch):
     def _update_profile(self, profile: Profile) -> None:
         
         self.execute(
-            "UPDATE profiles SET post_url = %s where _id = %s",
-            profile.post_url, profile.id
+            "UPDATE profiles SET post_url = %s, is_public = %s where _id = %s",
+            profile.post_url, profile.is_public, profile.id
         )
         
 ################################################################################
@@ -269,6 +270,23 @@ class DatabaseUpdater(DBWorkerBranch):
         self.execute(
             "UPDATE trading_cards SET card_idx = %s WHERE _id = %s",
             card.index, card.id
+        )
+        
+################################################################################
+    def _update_card_deck(self, deck: CardDeck) -> None:
+        
+        self.execute(
+            "UPDATE tcg_card_decks SET name = %s, image = %s WHERE _id = %s",
+            deck.name, deck.image, deck.id
+        )
+        
+################################################################################
+    def _update_deck_card_slot(self, slot: DeckCardSlot) -> None:
+        
+        self.execute(
+            "UPDATE tcg_deck_card_slots SET sort_order = %s, card_id = %s "
+            "WHERE _id = %s",
+            slot.order, slot.card.id, slot.id
         )
         
 ################################################################################
@@ -299,5 +317,7 @@ class DatabaseUpdater(DBWorkerBranch):
     profile                 = _update_profile
     card_collection         = _update_card_collection
     trading_card            = _update_trading_card
+    card_deck               = _update_card_deck
+    deck_card_slot          = _update_deck_card_slot
     
 ################################################################################

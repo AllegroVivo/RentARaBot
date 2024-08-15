@@ -1,9 +1,13 @@
-from .TradingCardMainMenuView import TradingCardMainMenuView
-from .BoosterPackConfigMenuView import BoosterPackConfigMenuView
 from .BoosterCardConfigMenuView import BoosterCardConfigMenuView
-from .TradingCardStatusView import TradingCardStatusView
+from .BoosterPackConfigMenuView import BoosterPackConfigMenuView
+from .CardAddMethodView import CardAddMethodView
+from .CardCollectionMenuView import CardCollectionMenuView
+from .CardDeckStatusView import CardDeckStatusView
 from .CardManagerMenuView import CardManagerMenuView
 from .CardSelectView import CardSelectView
 from .CollectionManagerMenuView import CollectionManagerMenuView
-from .CardCollectionMenuView import CardCollectionMenuView
+from .DeckManagerMenuView import DeckManagerMenuView
+from .TradingCardMainMenuView import TradingCardMainMenuView
+from .TradingCardStatusView import TradingCardStatusView
+from .UserCollectionMenuView import UserCollectionMenuView
 ################################################################################

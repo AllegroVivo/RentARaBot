@@ -12,6 +12,8 @@ from discord import (
     SelectOption,
     ChannelType,
 )
+
+from Assets import BotEmojis
 from Errors import MaxItemsReached
 from Utilities import Utilities as U
 from UI.Common import ConfirmCancelView, FroggeSelectView
@@ -33,6 +35,7 @@ class ProfileChannelGroup:
         "_mgr",
         "_channels",
         "_roles",
+        "_private",
     )
     
     MAX_ITEMS = 10
@@ -45,6 +48,8 @@ class ProfileChannelGroup:
         
         self._channels: List[Union[TextChannel, ForumChannel]] = kwargs.get("channels", [])
         self._roles: List[Role] = kwargs.get("roles", [])
+        
+        self._private: bool = kwargs.get("private", False)
     
 ################################################################################
     @classmethod
@@ -64,7 +69,8 @@ class ProfileChannelGroup:
             mgr=mgr,
             _id=data[0],
             channels=[c for c in channels if c is not None],
-            roles=[r for r in roles if r is not None]
+            roles=[r for r in roles if r is not None],
+            private=data[4]
         )
     
 ################################################################################
@@ -92,6 +98,18 @@ class ProfileChannelGroup:
         return self._roles
     
 ################################################################################
+    @property
+    def is_private(self) -> bool:
+        
+        return self._private
+    
+    @is_private.setter
+    def is_private(self, value: bool) -> None:
+        
+        self._private = value
+        self.update()
+        
+################################################################################
     def update(self) -> None:
         
         self.bot.database.update.profile_channel_group(self)
@@ -107,11 +125,14 @@ class ProfileChannelGroup:
         
         channel_str = "\n".join([f"* {c.mention}" for c in self.channels])
         role_str = "\n".join([f"* {r.mention}" for r in self.roles])
+        private_emoji = BotEmojis.CheckGreen if self.is_private else BotEmojis.Cross
         
         return U.make_embed(
             title="__Profile Channel Group Status__",
             description=(
-                "**What's This?**\n"
+                f"**Private Group:** {str(private_emoji)}\n\n"
+                
+                "__**What's This?**__\n"
                 "*The following list of channels may\n"
                 "be used to post profiles by users\n"
                 "with the given linked roles.*"
@@ -286,5 +307,11 @@ class ProfileChannelGroup:
                 self._roles.remove(role)
                 
         self.update()
+        
+################################################################################
+    async def toggle_private(self, interaction: Interaction) -> None:
+        
+        self.is_private = not self.is_private
+        await interaction.respond("** **", delete_after=0.1)
         
 ################################################################################

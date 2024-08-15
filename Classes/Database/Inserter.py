@@ -226,6 +226,24 @@ class DatabaseInserter(DBWorkerBranch):
         )
     
 ################################################################################
+    def _insert_deck_card_slot(self, deck_id: str, order: int, card_id: str) -> str:
+        
+        return self._insert(
+            "tcg_deck_card_slots",
+            ["_id", "deck_id", "sort_order", "card_id"],
+            [self.generate_id(), deck_id, order, card_id]
+        )
+    
+################################################################################
+    def _insert_card_deck(self, coll_id: str, name: str) -> str:
+        
+        return self._insert(
+            "tcg_card_decks",
+            ["_id", "collection_id", "name"],
+            [self.generate_id(), coll_id, name]
+        )
+    
+################################################################################
 
     guild                   = _insert_guild
     form                    = _insert_form
@@ -246,6 +264,8 @@ class DatabaseInserter(DBWorkerBranch):
     rarity_weight           = _insert_rarity_weight
     additional_image        = _insert_additional_image
     booster_card_config     = _insert_booster_card_config
+    deck_card_slot          = _insert_deck_card_slot
+    card_deck               = _insert_card_deck
     
 ################################################################################
     

@@ -151,6 +151,14 @@ class DatabaseDeleter(DBWorkerBranch):
             weight.delete()
             
 ################################################################################
+    def _delete_deck_card_slot(self, slot: DeckCardSlot) -> None:
+        
+        self.execute(
+            "DELETE FROM tcg_deck_card_slots WHERE _id = %s;",
+            slot.id
+        )
+        
+################################################################################
 
     form_option             = _delete_form_option
     form_question           = _delete_form_question
@@ -166,5 +174,6 @@ class DatabaseDeleter(DBWorkerBranch):
     profile                 = _delete_profile
     rarity_weight           = _delete_rarity_weight
     booster_card_config     = _delete_booster_card_config
+    deck_card_slot          = _delete_deck_card_slot
     
 ################################################################################

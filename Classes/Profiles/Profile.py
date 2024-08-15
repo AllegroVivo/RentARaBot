@@ -27,10 +27,12 @@ from Errors import (
     ChannelMissing,
     InsufficientPermissions,
     ProfileRoleNotOwned,
-    PrefsNotSet
+    PrefsNotSet,
+    ProfileNotPosted,
+    PreferencesIncomplete
 )
-from UI.Common import CloseMessageView, FroggeSelectView
-from UI.Profiles import ProfileMainMenuView, PersonalityPreferencePickView
+from UI.Common import CloseMessageView, FroggeSelectView, ConfirmCancelView
+from UI.Profiles import ProfileMainMenuView, PersonalityPreferencePickView, PublicPrivateView
 from Utilities import Utilities as U
 from .ProfileAtAGlance import ProfileAtAGlance
 from .ProfileDetails import ProfileDetails
@@ -40,7 +42,7 @@ from .ProfilePreferences import ProfilePreferences
 from Utilities.Constants import *
 
 if TYPE_CHECKING:
-    from Classes import ProfileManager, RentARaBot, Character
+    from Classes import ProfileManager, RentARaBot
 ################################################################################
 
 __all__ = ("Profile", )
@@ -61,6 +63,7 @@ class Profile:
         "_post_url",
         "_post_msg",
         "_preferences",
+        "_public",
     )
     
     MAX_ADDL_IMAGES = 3
@@ -71,6 +74,7 @@ class Profile:
         self._id: str = _id
         self._mgr: ProfileManager = mgr
         self._user: User = user
+        self._public: bool = True
         
         self._details: ProfileDetails = ProfileDetails(self)
         self._aag: ProfileAtAGlance = ProfileAtAGlance(self)
@@ -99,6 +103,7 @@ class Profile:
         self._id = profile_data[0]
         self._mgr = mgr
         self._user = await mgr.guild.get_or_fetch_member_or_user(profile_data[2])
+        self._public = profile_data[4]
         
         self._details = ProfileDetails.load(self, data["details"])
         self._aag = ProfileAtAGlance.load(self, data["aag"])
@@ -188,6 +193,18 @@ class Profile:
         
         return self._details.color or Colour.embed_background()
     
+################################################################################
+    @property
+    def is_public(self) -> bool:
+    
+        return self._public
+    
+    @is_public.setter
+    def is_public(self, value: bool) -> None:
+        
+        self._public = value
+        self.update()
+        
 ################################################################################
     def is_complete(self) -> bool:
         
@@ -362,17 +379,47 @@ class Profile:
             await interaction.respond(embed=error, ephemeral=True)
             return
         
-        if await self.update_post_components():
-            await interaction.respond(embed=self.success_message())
+        public_prompt = U.make_embed(
+            title="__Post Profile__",
+            description=(
+                "Would you like to post your profile publicly?\n\n"
+
+                "Posting your profile publicly will allow others to view it and "
+                "match with you using our matching feature. If you choose not to post "
+                "it publicly, however, it will be kept private and only staff will be able "
+                "to view it."
+            )
+        )
+        view = PublicPrivateView(interaction.user)
+
+        await interaction.respond(embed=public_prompt, view=view)
+        await view.wait()
+
+        if not view.complete:
             return
         
+        previous_setting = self.is_public
+        self.is_public = view.value
+
+        if previous_setting == self.is_public:
+            if await self.update_post_components():
+                await interaction.respond(embed=self.success_message())
+                return
+        else:
+            await self.delete_profile_post()
+    
         options = [
             SelectOption(
                 label=channel.name,
                 value=str(channel.id),
             )
-            for channel in await self._mgr.post_channels_for(interaction.user)
+            for channel in await self._mgr.post_channels_for(interaction.user, not self.is_public)
         ][:25]
+        
+        if not options:
+            error = ProfileChannelsNotSet()
+            await interaction.respond(embed=error, ephemeral=True)
+            return
         
         if len(options) > 1:
             prompt = U.make_embed(
@@ -408,7 +455,7 @@ class Profile:
         if channel.type == ChannelType.text:
             self._post_msg = await channel.send(embeds=post_embeds)
             self.post_url = self._post_msg.jump_url
-            await interaction.respond(embed=self.success_message())
+            await interaction.respond(embed=self.success_message(not self.is_public))
             return
 
         # Must be a forum channel
@@ -430,7 +477,7 @@ class Profile:
             else:
                 self._post_msg = result
             self.post_url = self._post_msg.jump_url
-            await interaction.respond(embed=self.success_message())
+            await interaction.respond(embed=self.success_message(not self.is_public))
         except Forbidden:
             error = InsufficientPermissions(channel, "Send Messages")
             await interaction.respond(embed=error, ephemeral=True)
@@ -454,7 +501,15 @@ class Profile:
             return True
         
 ################################################################################
-    def success_message(self) -> Embed:
+    def success_message(self, is_private: bool = False) -> Embed:
+        
+        if not is_private:
+            link_text = (
+                f"\n{BotEmojis.ArrowRight}  [Check It Out HERE!]"
+                f"({self.post_url})  {BotEmojis.ArrowLeft}\n"
+            )
+        else:
+            link_text = ""
 
         return U.make_embed(
             color=Colour.brand_green(),
@@ -462,10 +517,8 @@ class Profile:
             description=(
                 "Hey, good job, you did it! Your profile was posted successfully!\n"
                 f"{U.draw_line(extra=37)}\n"
-                f"(__Character Name:__ ***{self.name}***)\n\n"
-
-                f"{BotEmojis.ArrowRight}  [Check It Out HERE!]"
-                f"({self.post_url})  {BotEmojis.ArrowLeft}\n"
+                f"(__Character Name:__ ***{self.name}***)\n"
+                f"{link_text}"
                 f"{U.draw_line(extra=16)}"
             ),
             thumbnail_url=BotImages.ThumbsUpFrog,
@@ -494,6 +547,111 @@ class Profile:
 
         await interaction.response.send_message(embed=progress, view=view)
         await view.wait()
-    
+
 ################################################################################
-    
+    async def run_matching_routine(self, interaction: Interaction, public_profiles: List[Profile]) -> None:
+
+        post_msg = await self.post_message()
+        if post_msg is None:
+            error = ProfileNotPosted()
+            await interaction.respond(embed=error, ephemeral=True)
+            return
+        
+        if not self.preferences.is_matchable:
+            error = PreferencesIncomplete(self)
+            await interaction.respond(embed=error, ephemeral=True)
+            return
+        
+        warning = U.make_embed(
+            title="__Matching Warning__",
+            description=(
+                "To enhance the results of the matching process, please ensure that "
+                "you have filled out your profile's `Preferences & Activities` section "
+                "as accurately as possible!"
+            )
+        )
+        view = ConfirmCancelView(interaction.user)
+        
+        await interaction.respond(embed=warning, view=view)
+        await view.wait()
+        
+        if not view.complete or view.value is False:
+            return
+        
+        matches = []
+        for profile in public_profiles:
+            if profile == self:
+                continue
+            if not profile.preferences.is_matchable():
+                continue
+            if match := self._preferences.match(profile):
+                matches.append(match)
+                
+        matches.sort(key=lambda x: x[1], reverse=True)
+        matches = matches[:5]
+        
+        if not matches:
+            await interaction.respond(
+                embed=U.make_embed(
+                    title="__No Matches Found__",
+                    description=(
+                        "Sorry, but we couldn't find any matches for you at this time!\n\n"
+                        "Please try again later or consider updating your preferences!"
+                    )
+                ),
+                ephemeral=True
+            )
+            return
+        
+        matches_str = ""
+        for pair in matches:
+            user, score = pair
+            matches_str += f"**{user.display_name}** -- `{score}%`\n"
+
+        embed = U.make_embed(
+            title="__Top Matches__",
+            description=(
+                "Here are the top 5 matches for you based on your preferences!\n\n"
+                f"{U.draw_line(extra=15)}\n"
+                f"{matches_str}"
+            )
+        )
+        await interaction.respond(embed=embed)  # , ephemeral=True)
+        
+################################################################################
+    async def delete_profile_post(self) -> bool:
+        
+        if self._post_url is None:
+            return False
+        
+        message = await self.post_message()
+        if message is None:
+            return False
+        
+        try:
+            if isinstance(message.channel, Thread):
+                await message.channel.delete()
+            else:
+                await message.delete()
+        except NotFound:
+            return False
+        else:
+            self.post_url = None
+            return True
+
+################################################################################
+    async def revive_if_necessary(self):
+        
+        message = await self.post_message()
+        if message is None:
+            return
+        
+        if not isinstance(message.channel, Thread):
+            return
+        
+        if message.channel.archived:
+            new_msg = await message.channel.send(embeds=[e for e in self.compile() if e is not None])
+            await self.delete_profile_post()
+            self.post_url = new_msg.jump_url
+
+################################################################################
