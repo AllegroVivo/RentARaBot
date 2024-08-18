@@ -6,10 +6,17 @@ from io import BytesIO
 from typing import TYPE_CHECKING, List, Type, TypeVar, Any, Dict, Optional
 
 import requests
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from discord import Embed, Interaction, SelectOption, File
 
-from Errors import DeckFull, MalformedID, InvalidCardName, CardNotInCollection, CardAlreadyInDeck
+from Errors import (
+    DeckFull,
+    MalformedID,
+    InvalidCardName,
+    CardNotInCollection,
+    CardAlreadyInDeck,
+    PermalinkFailed,
+)
 from UI.Common import BasicTextModal, FroggeSelectView
 from UI.TradingCardGame import CardDeckStatusView, CardAddMethodView
 from Utilities import Utilities as U
@@ -129,6 +136,12 @@ class CardDeck:
         self.update()
         
 ################################################################################
+    @property
+    def is_full(self) -> bool:
+        
+        return len(self) >= self.MAX_DECK_SIZE
+    
+################################################################################
     def update(self) -> None:
         
         self.bot.database.update.card_deck(self)
@@ -183,7 +196,7 @@ class CardDeck:
         await interaction.respond(embed=prompt, view=view)
         await view.wait()
         
-        if not view.complete or view.value is False:
+        if not view.complete or view.value is False or view.value is None:
             return
         
         method, inter = view.value
@@ -204,7 +217,7 @@ class CardDeck:
         slot = DeckCardSlot.new(self, card)
         self._cards.append(slot)
         
-        await self.generate_image()
+        await self.generate_image(interaction)
         
 ################################################################################
     async def try_get_card_by_id(self, interaction: Interaction) -> Optional[TradingCard]:
@@ -328,6 +341,8 @@ class CardDeck:
             description="Please select the card you wish to add."
         )
         card = await series.select_card(interaction, prompt)
+        if card is None:
+            return
 
         if card not in self.parent_collection:
             error = CardNotInCollection(card.name)
@@ -363,7 +378,7 @@ class CardDeck:
             if slot.order > missing_idx:
                 slot.order -= 1
 
-        await self.generate_image()
+        await self.generate_image(interaction)
         
 ################################################################################
     async def select_card(self, interaction: Interaction, prompt: Embed) -> Optional[TradingCard]:
@@ -399,36 +414,51 @@ class CardDeck:
         )
     
 ################################################################################
-    async def generate_image(self) -> None:
+    async def generate_image(self, interaction: Interaction) -> None:
         
-        # slot_width = 150
-        # slot_height = 210
-        # 
-        # canvas_width = slot_width * 6
-        # canvas_height = slot_height
-        # canvas = Image.new('RGBA', (canvas_width, canvas_height), (255, 255, 255, 0))  # Transparent background
-        # 
-        # for i, slot in enumerate(self._cards):
-        #     # Download the card image from the URL
-        #     print(slot.card.image)
-        #     response = requests.get(slot.card.image)
-        #     print(response)
-        #     card_image = Image.open(BytesIO(response.content))
-        # 
-        #     # Resize the card image to fit within the slot
-        #     card_image = card_image.resize((slot_width, slot_height))
-        # 
-        #     # Calculate the position to paste the card on the canvas
-        #     position = (i * slot_width, 0)
-        #     canvas.paste(card_image, position)
-        #     
-        # filepath = f"Files/Deck-{self.id}.png"
-        # canvas.save(filepath)
-        # 
-        # file = File(filepath)
-        # dump = await self.bot._img_dump.send(file=file)
-        # 
-        # self.image = dump.attachments[0].url
-        pass
+        slot_width = 150
+        slot_height = 210
+
+        canvas_width = slot_width * 6
+        canvas_height = slot_height
+        canvas = Image.new('RGBA', (canvas_width, canvas_height), (255, 255, 255, 0))  # Transparent background
+
+        for i, slot in enumerate(self._cards):
+            if not slot.card.permalink:
+                continue
+                
+            try:
+                # Download the card image from the URL
+                response = requests.get(slot.card.permalink)
+                card_image = Image.open(BytesIO(response.content))
+            except UnidentifiedImageError:
+                slot.card.permalink = None
+                await interaction.respond(embed=PermalinkFailed(slot.card.name), ephemeral=True)
+                # card_image = Image.open(f"Files/DefaultCard.png")
+            else:
+                # Resize the card image to fit within the slot
+                card_image = card_image.resize((slot_width, slot_height))
+    
+                # Calculate the position to paste the card on the canvas
+                position = (i * slot_width, 0)
+                canvas.paste(card_image, position)
+
+        filepath = f"Files/Deck-{self.id}.png"
+        canvas.save(filepath)
+
+        file = File(filepath)
+        dump = await self.bot._img_dump.send(file=file)
+
+        self.image = dump.attachments[0].url
         
+        try:
+            os.remove(filepath)
+        except FileNotFoundError:
+            pass
+        
+################################################################################
+    def get_die_marker_matching(self, roll: int) -> List[DeckCardSlot]:
+        
+        return [slot for slot in self._cards if slot.card.die_marker == roll]
+    
 ################################################################################

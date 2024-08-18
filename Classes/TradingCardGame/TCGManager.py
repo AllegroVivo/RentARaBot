@@ -112,3 +112,8 @@ class TCGManager:
         await self._collections.user_menu(interaction)
         
 ################################################################################
+    async def challenge_user(self, interaction: Interaction, user: User) -> None:
+        
+        await self._battles.challenge_user(interaction, user)
+        
+################################################################################

@@ -79,10 +79,12 @@ class DatabaseUpdater(DBWorkerBranch):
         
         self.execute(
             "UPDATE trading_card_details SET name = %s, description = %s, "
-            "character_group = %s, image_url = %s, rarity = %s WHERE card_id = %s",
+            "character_group = %s, image_url = %s, rarity = %s, imgur_url = %s "
+            "WHERE card_id = %s",
             details.name, details.description, 
             details.group.value if details.group else None, 
-            details.image, details.rarity.value, details._parent.id
+            details.image, details.rarity.value, details.permalink, 
+            details._parent.id
         )
         
 ################################################################################

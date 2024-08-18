@@ -67,6 +67,23 @@ class Admin(Cog):
         await guild.profile_manager.main_menu(ctx.interaction)
         
 ################################################################################
+    @admin.command(
+        name="reset",
+        description="Reset the bot's current TCG battle lists."
+    )
+    async def reset_battles(self, ctx: ApplicationContext) -> None:
+
+        battles = self.bot[ctx.guild_id].card_manager._battles
+        
+        battles._challenges = []
+        battles._battles = []
+        
+        for player in battles._players:
+            player.current_deck = None
+            
+        await ctx.interaction.respond("Battles reset.")
+        
+################################################################################
 def setup(bot: "RentARaBot") -> None:
     
     bot.add_cog(Admin(bot))

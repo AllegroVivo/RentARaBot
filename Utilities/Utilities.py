@@ -485,7 +485,11 @@ class Utilities:
             
 ################################################################################
     @staticmethod
-    async def wait_for_image(interaction: Interaction, prompt: Embed) -> Optional[str]:
+    async def wait_for_image(
+        interaction: Interaction,
+        prompt: Embed,
+        imgur: bool = False
+    ) -> Optional[Union[str, Tuple[str, str]]]:
 
         if not prompt.footer:
             prompt.footer = EmbedFooter(text="Type 'cancel' to stop the operation.")
@@ -498,7 +502,8 @@ class Utilities:
                     (
                         len(m.attachments) > 0
                         and m.attachments[0].content_type in (
-                            "image/png", "image/jpeg", "image/gif", "image/webp"
+                            "image/png", "image/jpeg", "image/gif", 
+                            "image/webp", "image/jpg", "image/apng"
                         )
                     )
                     or m.content.lower() == "cancel"
@@ -526,6 +531,16 @@ class Utilities:
                 image_url = await interaction.client.dump_image(message.attachments[0])  # type: ignore
             except NotFound:
                 pass
+            if imgur:
+                imgur_url = await interaction.client.dump_image_to_imgur(interaction, message.attachments[0])  # type: ignore
+                if imgur_url:
+                    ret = image_url, imgur_url
+                else:
+                    ret = image_url
+            else:
+                ret = image_url
+        else:
+            ret = None
 
         try:
             await message.delete()
@@ -542,7 +557,7 @@ class Utilities:
         except NotFound:
             pass
         
-        return image_url
+        return ret
     
 ################################################################################
     @staticmethod

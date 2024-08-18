@@ -26,6 +26,7 @@ class TradingCardDetails:
         "_group",
         "_image",
         "_rarity",
+        "_imgur",
     )
     
 ################################################################################
@@ -36,6 +37,7 @@ class TradingCardDetails:
         self._name: Optional[str] = kwargs.get("name")
         self._description: Optional[str] = kwargs.get("description")
         self._image: Optional[str] = kwargs.get("image")
+        self._imgur: Optional[str] = kwargs.get("imgur")
         
         self._group: Optional[CharacterGroup] = kwargs.get("group")
         self._rarity: CardRarity = kwargs.get("rarity", CardRarity.Common)
@@ -51,6 +53,7 @@ class TradingCardDetails:
             group=CharacterGroup(data[3]) if data[3] else None,
             image=data[4],
             rarity=CardRarity(data[5]),
+            imgur=data[6],
         )
     
 ################################################################################
@@ -126,6 +129,18 @@ class TradingCardDetails:
         self.update()
         
 ################################################################################
+    @property
+    def permalink(self) -> Optional[str]:
+        
+        return self._imgur
+    
+    @permalink.setter
+    def permalink(self, value: str) -> None:
+        
+        self._imgur = value
+        self.update()
+        
+################################################################################
     def update(self) -> None:
         
         self.bot.database.update.trading_card_details(self)
@@ -163,6 +178,24 @@ class TradingCardDetails:
             return
         
         self.image = image_url
+        
+################################################################################
+    async def set_permalink(self, interaction: Interaction) -> None:
+        
+        modal = BasicTextModal(
+            title="Set Card Permalink",
+            attribute="Permalink",
+            example="eg. 'https://imgur.com/123abc'",
+            max_length=500,
+        )
+        
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+        
+        if not modal.complete:
+            return
+        
+        self.permalink = modal.value
         
 ################################################################################
     async def set_group(self, interaction: Interaction) -> None:

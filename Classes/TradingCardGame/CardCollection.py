@@ -8,7 +8,7 @@ from discord.ext.pages import Page
 from Assets import BotEmojis, BotImages
 from .CardCount import CardCount
 from .DeckManager import DeckManager
-from UI.Common import FroggeSelectView, Frogginator
+from UI.Common import FroggeSelectView, Frogginator, CloseMessageView
 from UI.TradingCardGame import CardCollectionMenuView, CardSelectView, UserCollectionMenuView
 from Utilities import Utilities as U
 
@@ -376,7 +376,7 @@ class CardCollection:
             )
             pages.append(Page(embeds=[embed]))
         
-        froggintor = Frogginator(pages)
+        froggintor = Frogginator(pages, custom_view=CloseMessageView(interaction.user))
         await froggintor.respond(interaction)
         
 ################################################################################

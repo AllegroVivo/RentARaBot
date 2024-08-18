@@ -75,6 +75,12 @@ class DeckManager:
         return self._parent.id
     
 ################################################################################
+    @property
+    def decks(self) -> List[CardDeck]:
+        
+        return self._decks
+    
+################################################################################
     def status(self) -> Embed:
         
         return U.make_embed(

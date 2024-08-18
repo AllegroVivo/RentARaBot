@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from discord import Attachment, Bot, TextChannel
+from discord import Attachment, Bot, TextChannel, Interaction
 
 from Classes.Database import Database
 from .GuildManager import GuildManager
 from .LodestoneClient import LodestoneClient
+from .ImgurClient import ImgurClient
 
 if TYPE_CHECKING:
     from Classes import GuildData
@@ -22,6 +23,7 @@ class RentARaBot(Bot):
         "_db",
         "_guild_mgr",
         "_lodestone",
+        "_imgur",
     )
     
     IMAGE_DUMP = 991902526188302427
@@ -36,6 +38,7 @@ class RentARaBot(Bot):
         self._db: Database = Database(self)        
         self._guild_mgr: GuildManager = GuildManager(self)
         self._lodestone: LodestoneClient = LodestoneClient(self)
+        self._imgur: ImgurClient = ImgurClient(self)
         
 ################################################################################
     def __getitem__(self, guild_id: int) -> GuildData:
@@ -64,6 +67,12 @@ class RentARaBot(Bot):
     def lodestone(self) -> LodestoneClient:
         
         return self._lodestone
+    
+################################################################################
+    @property
+    def imgur(self) -> ImgurClient:
+        
+        return self._imgur
     
 ################################################################################
     async def load_all(self) -> None:
@@ -108,4 +117,8 @@ class RentARaBot(Bot):
         return post.attachments[0].url
 
 ################################################################################
+    async def dump_image_to_imgur(self, interaction: Interaction, image: Attachment) -> Optional[str]:
     
+        return await self.imgur.upload_image(interaction, image)
+    
+################################################################################

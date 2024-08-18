@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Type, TypeVar, Any, Dict
+from typing import TYPE_CHECKING, Optional, Type, TypeVar, Any, Dict, List
 
 from discord import Embed, EmbedField, Interaction, SelectOption
 
@@ -124,6 +124,16 @@ class TradingCard:
         
         return self._details.image
     
+    @property
+    def permalink(self) -> Optional[str]:
+        
+        return self._details.permalink
+    
+    @permalink.setter
+    def permalink(self, value: Optional[str]) -> None:
+        
+        self._details.permalink = value
+
 ################################################################################
     @property
     def rarity(self) -> CardRarity:
@@ -177,6 +187,7 @@ class TradingCard:
             self.name is not None,
             self.group is not None,
             self.image is not None,
+            self.permalink is not None,
             self.rarity is not None,
             self.battle is not None,
             self.nsfw is not None,
@@ -204,6 +215,13 @@ class TradingCard:
                 raise ValueError(f"Invalid Rarity: {self.rarity.proper_name}")
     
 ################################################################################
+    @staticmethod
+    def int_to_list(value: int) -> List[int]:
+
+        str_val = str(value).zfill(3)
+        return [int(c) for c in str_val]
+
+################################################################################
     def update(self) -> None:
         
         self.bot.database.update.trading_card(self)
@@ -214,6 +232,7 @@ class TradingCard:
         battle_stat = f"{self.battle:03d}" if self.battle is not None else "---"
         nsfw_stat = f"{self.nsfw:03d}" if self.nsfw is not None else "---"
         sfw_stat = f"{self.sfw:03d}" if self.sfw is not None else "---"
+        permalink = f"[Click Here]({self.permalink})" if self.permalink else "`Not Set`"
         
         return U.make_embed(
             color=self.rarity_color,
@@ -221,7 +240,8 @@ class TradingCard:
             description=(
                 f"**Subgroup:** `{self.group.proper_name if self.group else 'Not Set'}`\n"
                 f"**Series:** `{self.series.name}`\n"
-                f"**Rarity:** `{self.rarity.proper_name}`"
+                f"**Rarity:** `{self.rarity.proper_name}`\n"
+                f"**Permalink:** {permalink}\n"
             ),
             fields=[
                 EmbedField(
@@ -263,6 +283,11 @@ class TradingCard:
     async def set_image(self, interaction: Interaction) -> None:
         
         await self._details.set_image(interaction)
+        
+################################################################################
+    async def set_permalink(self, interaction: Interaction) -> None:
+        
+        await self._details.set_permalink(interaction)
         
 ################################################################################
     async def set_rarity(self, interaction: Interaction) -> None:
@@ -332,4 +357,16 @@ class TradingCard:
         
         await self._stats.set_values(interaction)
                     
+################################################################################
+    def compare_bad(self, rand: int) -> bool:
+        
+        bad_list = self.int_to_list(self.bad)
+        rand_list = self.int_to_list(rand)
+        
+        for i, b in enumerate(bad_list):
+            if b == rand_list[i]:
+                return True
+            
+        return False
+    
 ################################################################################

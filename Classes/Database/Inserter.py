@@ -244,6 +244,15 @@ class DatabaseInserter(DBWorkerBranch):
         )
     
 ################################################################################
+    def _insert_tcg_player(self, guild_id: int, user_id: int) -> str:
+        
+        return self._insert(
+            "tcg_players",
+            ["_id", "guild_id", "user_id"],
+            [self.generate_id(), guild_id, user_id]
+        )
+    
+################################################################################
 
     guild                   = _insert_guild
     form                    = _insert_form
@@ -266,6 +275,7 @@ class DatabaseInserter(DBWorkerBranch):
     booster_card_config     = _insert_booster_card_config
     deck_card_slot          = _insert_deck_card_slot
     card_deck               = _insert_card_deck
+    tcg_player              = _insert_tcg_player
     
 ################################################################################
     
