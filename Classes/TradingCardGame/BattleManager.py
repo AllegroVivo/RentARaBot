@@ -102,3 +102,15 @@ class BattleManager:
         await battle.start()
         
 ################################################################################
+    async def test_battle(self, interaction: Interaction) -> None:
+
+        p1 = await self._mgr._state.get_or_fetch_member_or_user(265695573527625731)
+        p2 = await self._mgr._state.get_or_fetch_member_or_user(334530475479531520)
+
+        challenge = Challenge(self, self.get_player(p1), self.get_player(p2))
+        self._challenges.append(challenge)
+        await challenge.initiate_test(interaction)
+
+        await self.start_battle(challenge)
+
+################################################################################

@@ -84,6 +84,15 @@ class Admin(Cog):
         await ctx.interaction.respond("Battles reset.")
         
 ################################################################################
+    @admin.command(
+        name="battle_test",
+        description="Do a battle test."
+    )
+    async def test_battle(self, ctx: ApplicationContext) -> None:
+
+        await self.bot[ctx.guild_id].card_manager._battles.test_battle(ctx.interaction)
+
+################################################################################
 def setup(bot: "RentARaBot") -> None:
     
     bot.add_cog(Admin(bot))

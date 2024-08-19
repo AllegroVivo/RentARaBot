@@ -195,3 +195,24 @@ class Challenge:
         await self._mgr.start_battle(self)
         
 ################################################################################
+    async def initiate_test(self, interaction: Interaction) -> None:
+
+        self.player.current_deck = self.player.collection.deck_manager[[
+            deck.select_option()
+            for deck in self.player.collection.deck_manager.decks
+            if deck.is_full
+        ][0].value]
+        self.opponent.current_deck = self.opponent.collection.deck_manager[[
+            deck.select_option()
+            for deck in self.opponent.collection.deck_manager.decks
+            if deck.is_full
+        ][0].value]
+
+        self._thread = await interaction.channel.create_thread(
+            name=f"{self.player.user.display_name} vs {self.opponent.user.display_name}",
+            auto_archive_duration=60,
+            type=ChannelType.public_thread,
+        )
+        await self.transition_to_battle()
+
+################################################################################

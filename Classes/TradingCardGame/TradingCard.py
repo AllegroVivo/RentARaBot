@@ -222,6 +222,21 @@ class TradingCard:
         return [int(c) for c in str_val]
 
 ################################################################################
+    def get_absolute_value(self, stat: str, rand: int) -> int:
+
+        match stat.lower():
+            case "battle":
+                stat_value = self.battle
+            case "nsfw":
+                stat_value = self.nsfw
+            case "sfw":
+                stat_value = self.sfw
+            case _:
+                raise ValueError(f"Invalid Stat: {stat}")
+
+        return abs(stat_value - rand)
+
+################################################################################
     def update(self) -> None:
         
         self.bot.database.update.trading_card(self)
