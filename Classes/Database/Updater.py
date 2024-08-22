@@ -37,10 +37,11 @@ class DatabaseUpdater(DBWorkerBranch):
     def _update_form(self, form: Form) -> None:
         
         self.execute(
-            "UPDATE forms SET channel_id = %s, form_name = %s, to_notify = %s "
-            "WHERE _id = %s",
+            "UPDATE forms SET channel_id = %s, form_name = %s, to_notify = %s, "
+            "create_channel = %s, channel_roles = %s WHERE _id = %s",
             form.channel.id if form.channel else None, form.name, 
-            [u.id for u in form._to_notify], form.id
+            [u.id for u in form._to_notify], form.create_channel,
+            [r.id for r in form.channel_roles], form.id
         )
         
 ################################################################################

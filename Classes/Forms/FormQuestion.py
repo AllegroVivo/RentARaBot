@@ -470,6 +470,8 @@ class FormQuestion:
         if self._prompt is not None and self._prompt.show_after:
             if await self._prompt.send(interaction):
                 self._insert_form_response(user, response)
+        else:
+            self._insert_form_response(user, response)
 
 ################################################################################
     def _insert_form_response(self, user: User, response: List[str]) -> None:

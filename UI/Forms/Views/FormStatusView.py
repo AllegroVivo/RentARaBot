@@ -25,8 +25,10 @@ class FormStatusView(FroggeView):
             RemoveQuestionButton(),
             SetToNotifyButton(),
             ModifyPromptsButton(),
-            SetChannelButton(),
             ViewResponsesButton(),
+            SetChannelButton(),
+            ToggleCreateChannelButton(),
+            ManageChannelRolesButton(),
             CloseMessageButton()
         ]
         for btn in button_list:
@@ -155,11 +157,47 @@ class ViewResponsesButton(FroggeButton):
             style=ButtonStyle.primary,
             label="View All Responses",
             disabled=False,
-            row=2
+            row=1
         )
         
     async def callback(self, interaction: Interaction):
         await self.view.ctx.paginate_responses(interaction)
+        await self.view.edit_message_helper(
+            interaction, embed=self.view.ctx.status(), view=self.view
+        )
+        
+################################################################################
+class ToggleCreateChannelButton(FroggeButton):
+    
+    def __init__(self):
+        
+        super().__init__(
+            style=ButtonStyle.primary,
+            label="Toggle Create Channel",
+            disabled=False,
+            row=2
+        )
+        
+    async def callback(self, interaction: Interaction):
+        await self.view.ctx.toggle_create_channel(interaction)
+        await self.view.edit_message_helper(
+            interaction, embed=self.view.ctx.status(), view=self.view
+        )
+        
+################################################################################
+class ManageChannelRolesButton(FroggeButton):
+    
+    def __init__(self):
+        
+        super().__init__(
+            style=ButtonStyle.primary,
+            label="Manage Channel Roles",
+            disabled=False,
+            row=2
+        )
+        
+    async def callback(self, interaction: Interaction):
+        await self.view.ctx.manage_channel_roles(interaction)
         await self.view.edit_message_helper(
             interaction, embed=self.view.ctx.status(), view=self.view
         )

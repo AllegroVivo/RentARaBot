@@ -166,8 +166,8 @@ class QuestionPrompt:
     def compile(self) -> Embed:
         
         return U.make_embed(
-            title=self.title,
-            description=self.description,
+            title=self.title or "** **",
+            description=self.description or "** **",
             thumbnail_url=self.thumbnail
         )
     

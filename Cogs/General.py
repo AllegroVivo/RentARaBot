@@ -89,6 +89,16 @@ class General(Cog):
         await guild.card_manager.user_collection_menu(ctx.interaction)
         
 ################################################################################
+    @slash_command(
+        name="form",
+        description="Fill out a form.",
+    )
+    async def fill_out_form(self, ctx: ApplicationContext) -> None:
+        
+        guild = self.bot[ctx.guild_id]
+        await guild.forms_manager.user_menu(ctx.interaction)
+        
+################################################################################
     @user_command(name="Card Menu")
     async def admin_card_menu(self, ctx: ApplicationContext, user: User) -> None:
         

@@ -17,9 +17,8 @@ bot = RentARaBot(
     intents=Intents.all(),
     debug_guilds=(
         None
-        if os.getenv("DEBUG") == "True"
+        if os.getenv("DEBUG") == "False"
         else [
-            303742308874977280, 
             955933227372122173, 
             1098708733284061278
         ]

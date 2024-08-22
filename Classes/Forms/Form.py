@@ -2,12 +2,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional, Type, TypeVar, Dict, Any
 
-from discord import TextChannel, Embed, EmbedField, Interaction, SelectOption, User
+from discord import TextChannel, Embed, Role, Interaction, SelectOption, User
 
 from Assets import BotEmojis
 from Errors import MaxItemsReached, ChannelNotSet, IncompleteForm
-from UI.Common import BasicTextModal, FroggeSelectView, ConfirmCancelView, Frogginator
-from UI.Forms import FormStatusView, FormPromptsMenuView, FormNotificationsMenuView
+from UI.Common import (
+    BasicTextModal,
+    FroggeSelectView,
+    ConfirmCancelView,
+    Frogginator
+)
+from UI.Forms import (
+    FormStatusView,
+    FormPromptsMenuView,
+    FormNotificationsMenuView,
+    FormChannelRoleStatusView,
+)
 from Utilities import Utilities as U
 from .FormQuestion import FormQuestion
 from .FormResponseCollection import FormResponseCollection
@@ -35,6 +45,7 @@ class Form:
         "_post_prompt",
         "_to_notify",
         "_create_channel",
+        "_channel_roles",
     )
     
     MAX_QUESTIONS = 20
@@ -56,6 +67,7 @@ class Form:
         
         self._to_notify: List[User] = kwargs.get("to_notify", [])
         self._create_channel: bool = kwargs.get("create_channel", False)
+        self._channel_roles: List[Role] = kwargs.get("channel_roles", [])
     
 ################################################################################
     @classmethod
@@ -97,6 +109,11 @@ class Form:
         self._to_notify = [
             await mgr.guild.get_or_fetch_member_or_user(u)
             for u in fdata[4]
+        ]
+        self._create_channel = fdata[5]
+        self._channel_roles = [
+            await mgr.guild.get_or_fetch_role(r)
+            for r in fdata[6]
         ]
         
         return self
@@ -161,6 +178,24 @@ class Form:
         self.update()
         
 ################################################################################
+    @property
+    def create_channel(self) -> bool:
+        
+        return self._create_channel
+    
+    @create_channel.setter
+    def create_channel(self, value: bool) -> None:
+        
+        self._create_channel = value
+        self.update()
+       
+################################################################################
+    @property
+    def channel_roles(self) -> List[Role]:
+        
+        return self._channel_roles
+    
+################################################################################
     def update(self) -> None:
         
         self.bot.database.update.form(self)
@@ -174,24 +209,37 @@ class Form:
 ################################################################################
     def status(self) -> Embed:
         
-        return U.make_embed(
-            title=f"__Form Status for: `{self.name}`__",
-            description=(
-                f"**Questions:** [{len(self._questions)}]\n"
-                f"**Form Log Channel:** "
-                f"{self.channel.mention if self.channel else '`Not Set`'}\n\n"
-
-                "__**Users to Notify Upon Submission**__\n" + (
-                    "\n".join(
-                        f"* {u.mention} ({u.display_name})"
-                        for u in self._to_notify
-                    )
-                    if self._to_notify
-                    else "`No users to notify.`"
-                ) + "\n\n" +
+        desc = (
+            f"**Questions:** [{len(self._questions)}]\n"
+            f"**Form Log Channel:** "
+            f"{self.channel.mention if self.channel else '`Not Set`'}\n"
+            f"**Create Channel Upon Submission:** "
+            f"{str(BotEmojis.CheckGreen if self.create_channel else BotEmojis.Cross)}\n\n"
+        )
+        if self.create_channel:
+            desc += (
+                "__**Roles With Access to Created Channel**__\n" +
+                ("\n".join(
+                    f"* {r.mention}"
+                    for r in self.channel_roles
+                ) if self.channel_roles else "`Not Set`") + "\n\n"
+            )
+        desc += (
+            "__**Users to Notify Upon Submission**__\n" + (
+                "\n".join(
+                    f"* {u.mention} ({u.display_name})"
+                    for u in self._to_notify
+                )
+                if self._to_notify
+                else "`No users to notify.`"
+            ) + "\n\n" +
 
                 "Press a button below to modify the form."
-            ),
+        )
+        
+        return U.make_embed(
+            title=f"__Form Status for: `{self.name}`__",
+            description=desc,
         )
     
 ################################################################################
@@ -416,8 +464,8 @@ class Form:
                 except:
                     pass
                 
-        if self._create_channel:
-            await self._create_form_channel(interaction.user)
+        if self.create_channel:
+            await self._create_form_channel(interaction.user, new_collection)
         
         return True
 
@@ -545,12 +593,80 @@ class Form:
         self.update()
     
 ################################################################################
-    async def _create_form_channel(self, user: User) -> None:
+    async def _create_form_channel(self, user: User, response: FormResponseCollection) -> None:
         
         guild = self._mgr.guild.parent
         member = await self._mgr.guild.get_or_fetch_member(user.id)
         
         channel = await guild.create_text_channel(member.display_name)
-        await channel.set_permissions(member, read_messages=True, send_messages=True)
+        
+        await channel.set_permissions(guild.default_role, view_channel=False)
+        await channel.set_permissions(member, view_channel=True)
+        for role in self.channel_roles:
+            await channel.set_permissions(role, view_channel=True)
+        
+        await channel.send(embed=response.compile())
     
+################################################################################
+    async def toggle_create_channel(self, interaction: Interaction) -> None:
+        
+        self.create_channel = not self.create_channel
+        await interaction.respond("** **", delete_after=0.1)
+        
+################################################################################
+    def channel_roles_status(self) -> Embed:
+        
+        return U.make_embed(
+            title=f"__Channel Roles for: `{self.name}`__",
+            description=(
+                "__**Roles With Access to Created Channel**__\n" +
+                ("\n".join(
+                    f"* {r.mention} ({r.name})"
+                    for r in self.channel_roles
+                ) if self.channel_roles else "`Not Set`"
+                )
+            )
+        )
+    
+################################################################################
+    async def manage_channel_roles(self, interaction: Interaction) -> None:
+        
+        embed = self.channel_roles_status()
+        view = FormChannelRoleStatusView(interaction.user, self)
+        
+        await interaction.respond(embed=embed, view=view)
+        await view.wait()
+    
+################################################################################
+    async def add_channel_role(self, interaction: Interaction) -> None:
+        
+        prompt = U.make_embed(
+            title="__Add Channel Role__",
+            description="Mention the role you want to have access to the created channel."
+        )
+        role = await U.listen_for(interaction, prompt, U.MentionableType.Role)
+        if role is None:
+            return
+        
+        self._channel_roles.append(role)
+        self.update()
+        
+################################################################################
+    async def remove_channel_role(self, interaction: Interaction) -> None:
+        
+        prompt = U.make_embed(
+            title="__Remove Channel Role__",
+            description="Mention the role you want to remove from the channel roles list."
+        )
+        role = await U.listen_for(interaction, prompt, U.MentionableType.Role)
+        if role is None:
+            return
+        
+        if role not in self._channel_roles:
+            await interaction.respond("Role is not in the channel roles list.")
+            return
+        
+        self._channel_roles.remove(role)
+        self.update()
+        
 ################################################################################
