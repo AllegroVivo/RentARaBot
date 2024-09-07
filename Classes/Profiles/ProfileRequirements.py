@@ -53,8 +53,8 @@ class ProfileRequirements:
         self.rates: bool = kwargs.get("rates", False)
         
         self.world: bool = kwargs.get("world", False)
-        self.gender: bool = kwargs.get("gender", False)
-        self.race: bool = kwargs.get("race", False)
+        self.gender: bool = kwargs.get("gender", True)
+        self.race: bool = kwargs.get("race", True)
         self.orientation: bool = kwargs.get("orientation", False)
         self.height: bool = kwargs.get("height", False)
         self.age: bool = kwargs.get("age", False)
@@ -76,8 +76,8 @@ class ProfileRequirements:
         self.jobs = data[3]
         self.rates = data[4]
         
-        self.gender = data[5]
-        self.race = data[6]
+        self.gender = True
+        self.race = True
         self.orientation = data[7] 
         self.height = data[8]
         self.age = data[9]

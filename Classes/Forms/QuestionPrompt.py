@@ -135,6 +135,12 @@ class QuestionPrompt:
         self.update()
         
 ################################################################################
+    @property
+    def is_filled_out(self) -> bool:
+        
+        return self.title is not None or self.description is not None
+    
+################################################################################
     def update(self) -> None:
 
         self.bot.database.update.question_prompt(self)

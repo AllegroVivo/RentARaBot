@@ -270,10 +270,13 @@ class BoosterCardConfig:
         self.delete()
         
 ################################################################################
-    def get_card(self, coll: CardCollection) -> TradingCard:
+    def get_random_card(self, coll: CardCollection) -> Optional[TradingCard]:
         
         allowed_rarities = [w.rarity for w in self.weights]
         allowed = [c for c in self.card_manager.all_cards if c.rarity in allowed_rarities]
+        if not allowed:
+            return
+        
         if self.always_new:
             final_cards = [c for c in allowed if c not in coll]
         else:

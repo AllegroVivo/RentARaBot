@@ -1,6 +1,7 @@
 from .BoosterCardConfigMenuView import BoosterCardConfigMenuView
 from .BoosterPackConfigMenuView import BoosterPackConfigMenuView
 from .CardAddMethodView import CardAddMethodView
+from .CardBattleRollView import CardBattleRollView
 from .CardCollectionMenuView import CardCollectionMenuView
 from .CardDeckStatusView import CardDeckStatusView
 from .CardManagerMenuView import CardManagerMenuView

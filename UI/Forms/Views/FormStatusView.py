@@ -28,7 +28,7 @@ class FormStatusView(FroggeView):
             ViewResponsesButton(),
             SetChannelButton(),
             ToggleCreateChannelButton(),
-            ManageChannelRolesButton(),
+            ManageChannelButton(),
             CloseMessageButton()
         ]
         for btn in button_list:
@@ -185,19 +185,19 @@ class ToggleCreateChannelButton(FroggeButton):
         )
         
 ################################################################################
-class ManageChannelRolesButton(FroggeButton):
+class ManageChannelButton(FroggeButton):
     
     def __init__(self):
         
         super().__init__(
             style=ButtonStyle.primary,
-            label="Manage Channel Roles",
+            label="Manage Channel Creation",
             disabled=False,
             row=2
         )
         
     async def callback(self, interaction: Interaction):
-        await self.view.ctx.manage_channel_roles(interaction)
+        await self.view.ctx.manage_channel(interaction)
         await self.view.edit_message_helper(
             interaction, embed=self.view.ctx.status(), view=self.view
         )

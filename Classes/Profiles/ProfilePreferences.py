@@ -422,7 +422,7 @@ class ProfilePreferences(ProfileSection):
         )
 
 ################################################################################
-    def match(self, profile: Profile) -> Optional[Tuple[User, int]]:
+    def match(self, profile: Profile) -> Optional[Tuple[Profile, int]]:
 
         preferences = profile.preferences
 
@@ -459,7 +459,6 @@ class ProfilePreferences(ProfileSection):
             if music in self.music_prefs:
                 match_value += 1
         
-        print(match_value, match_max)
-        return profile.user, int((match_value / match_max) * 100)
+        return profile, int((match_value / match_max) * 100)
 
 ################################################################################

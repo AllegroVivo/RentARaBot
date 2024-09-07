@@ -6,7 +6,7 @@ from io import BytesIO
 from typing import TYPE_CHECKING, List, Type, TypeVar, Any, Dict, Optional
 
 import requests
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, UnidentifiedImageError, ImageOps
 from discord import Embed, Interaction, SelectOption, File
 
 from Errors import (
@@ -18,7 +18,7 @@ from Errors import (
     PermalinkFailed,
 )
 from UI.Common import BasicTextModal, FroggeSelectView
-from UI.TradingCardGame import CardDeckStatusView, CardAddMethodView
+from UI.TradingCardGame import CardDeckStatusView, CardAddMethodView, CardSelectView
 from Utilities import Utilities as U
 from .DeckCardSlot import DeckCardSlot
 
@@ -39,6 +39,7 @@ class CardDeck:
         "_cards",
         "_name",
         "_image",
+        "_overrides",
     )
     
     MAX_DECK_SIZE = 6
@@ -51,7 +52,9 @@ class CardDeck:
         
         self._name: str = name
         self._cards: List[DeckCardSlot] = kwargs.get("cards", [])
-        self._image: Optional[str] = kwargs.get("image", None) 
+        self._image: Optional[str] = kwargs.get("image", None)
+        
+        self._overrides: List[str] = []
     
 ################################################################################
     @classmethod
@@ -75,8 +78,15 @@ class CardDeck:
         self._cards = [DeckCardSlot.load(self, card) for card in data["cards"]]
         self._image = ddata[3]
         
+        self._overrides = []
+        
         return self
     
+################################################################################
+    def __eq__(self, other: CardDeck) -> bool:
+
+        return self.id == other.id
+
 ################################################################################
     def __len__(self) -> int:
         
@@ -328,31 +338,48 @@ class CardDeck:
 ################################################################################
     async def try_get_card_by_select(self, interaction: Interaction) -> Optional[TradingCard]:
 
+        series_options = []
+        for series in self.card_manager.series_list:
+            num_owned_cards = len(self.parent_collection.get_cards_by_series(series))
+            series_options.append(
+                SelectOption(
+                    label=series.name, 
+                    value=series.id,
+                    description=f"({num_owned_cards} owned cards)"
+                )
+            )
+
         prompt = U.make_embed(
             title="__Select Series__",
             description="Please select the series of the card you wish to add."
-        )        
-        series = await self.card_manager.select_series(interaction, prompt)
-        if series is None:
+        )
+        view = FroggeSelectView(interaction.user, series_options)
+
+        await interaction.respond(embed=prompt, view=view)
+        await view.wait()
+
+        if not view.complete or view.value is False:
             return
         
+        series = self.card_manager[view.value]
+        series_cards = self.parent_collection.get_cards_by_series(series)
+        for card in series_cards:
+            if card in self:
+                series_cards.remove(card)
+                
         prompt = U.make_embed(
             title="__Select Card__",
             description="Please select the card you wish to add."
         )
-        card = await series.select_card(interaction, prompt)
-        if card is None:
+        view = CardSelectView(interaction.user, [c.select_option() for c in series_cards])
+
+        await interaction.respond(embed=prompt, view=view)
+        await view.wait()
+
+        if not view.complete or view.value is False:
             return
 
-        if card not in self.parent_collection:
-            error = CardNotInCollection(card.name)
-            await interaction.respond(embed=error, ephemeral=True)
-            return
-
-        if card in self:
-            error = CardAlreadyInDeck(card.name)
-            await interaction.respond(embed=error, ephemeral=True)
-            return
+        card = self.card_manager.get_card(view.value)
         
         return card
     
@@ -435,13 +462,24 @@ class CardDeck:
                 slot.card.permalink = None
                 await interaction.respond(embed=PermalinkFailed(slot.card.name), ephemeral=True)
                 # card_image = Image.open(f"Files/DefaultCard.png")
+                continue
             else:
                 # Resize the card image to fit within the slot
                 card_image = card_image.resize((slot_width, slot_height))
-    
-                # Calculate the position to paste the card on the canvas
-                position = (i * slot_width, 0)
-                canvas.paste(card_image, position)
+
+            # Check if the card id is in the overrides list
+            if slot.card.id in self._overrides:
+                # Apply grayscale filter to the image
+                card_image = ImageOps.grayscale(card_image)
+                # Convert to RGBA
+                card_image = card_image.convert("RGBA")
+                # Apply a gray tint by reducing the alpha (transparency)
+                alpha = Image.new('L', card_image.size, color=128)  # 128 is for 50% transparency
+                card_image.putalpha(alpha)
+
+            # Calculate the position to paste the card on the canvas
+            position = (i * slot_width, 0)
+            canvas.paste(card_image, position, card_image)
 
         filepath = f"Files/Deck-{self.id}.png"
         canvas.save(filepath)
@@ -459,6 +497,16 @@ class CardDeck:
 ################################################################################
     def get_die_marker_matching(self, roll: int) -> List[DeckCardSlot]:
         
-        return [slot for slot in self._cards if slot.card.die_marker == roll]
+        return [
+            slot 
+            for slot in self._cards 
+            if slot.card.die_marker == roll 
+            and slot.card.id not in self._overrides
+        ]
     
+################################################################################
+    def add_override(self, card: TradingCard) -> None:
+        
+        self._overrides.append(card.id)
+        
 ################################################################################

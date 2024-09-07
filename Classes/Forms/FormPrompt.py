@@ -136,6 +136,15 @@ class FormPrompt:
         self.update()
         
 ################################################################################
+    @property
+    def is_filled_out(self) -> bool:
+        
+        return all([
+            self.title is not None,
+            self.description is not None,
+        ])
+    
+################################################################################
     def update(self) -> None:
 
         self.bot.database.update.form_prompt(self)
@@ -276,5 +285,11 @@ class FormPrompt:
             return False
         
         return view.value
+        
+################################################################################
+    async def toggle_cancel_button(self, interaction: Interaction) -> None:
+        
+        self.show_cancel = not self.show_cancel
+        await interaction.respond("** **", delete_after=0.1)
         
 ################################################################################

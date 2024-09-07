@@ -38,10 +38,12 @@ class DatabaseUpdater(DBWorkerBranch):
         
         self.execute(
             "UPDATE forms SET channel_id = %s, form_name = %s, to_notify = %s, "
-            "create_channel = %s, channel_roles = %s WHERE _id = %s",
+            "create_channel = %s, channel_roles = %s, create_category = %s "
+            "WHERE _id = %s",
             form.channel.id if form.channel else None, form.name, 
             [u.id for u in form._to_notify], form.create_channel,
-            [r.id for r in form.channel_roles], form.id
+            [r.id for r in form.channel_roles], 
+            form.category_channel.id if form.category_channel else None, form.id
         )
         
 ################################################################################
@@ -59,7 +61,7 @@ class DatabaseUpdater(DBWorkerBranch):
         
         self.execute(
             "UPDATE form_prompts SET title = %s, description = %s, "
-            "thumbnail = %s, show_after = %s, show_cancel = %s WHERE _id = %s",
+            "thumbnail = %s, post_prompt = %s, show_cancel = %s WHERE _id = %s",
             prompt.title, prompt.description, prompt.thumbnail, 
             prompt.show_after, prompt.show_cancel, prompt.id
         )

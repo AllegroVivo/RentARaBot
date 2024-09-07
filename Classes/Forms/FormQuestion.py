@@ -447,7 +447,7 @@ class FormQuestion:
 ################################################################################
     async def respond(self, interaction: Interaction) -> None:
         
-        if self._prompt is not None and not self._prompt.show_after:
+        if self._prompt is not None and self._prompt.is_filled_out and not self._prompt.show_after:
             if not await self._prompt.send(interaction):
                 return
 
@@ -467,7 +467,7 @@ class FormQuestion:
             return
         
         user, response = resp
-        if self._prompt is not None and self._prompt.show_after:
+        if self._prompt is not None and self._prompt.is_filled_out and self._prompt.show_after:
             if await self._prompt.send(interaction):
                 self._insert_form_response(user, response)
         else:

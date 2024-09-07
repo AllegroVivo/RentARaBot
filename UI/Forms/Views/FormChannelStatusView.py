@@ -10,10 +10,10 @@ if TYPE_CHECKING:
     from Classes import Form
 ################################################################################
 
-__all__ = ("FormChannelRoleStatusView",)
+__all__ = ("FormChannelStatusView",)
 
 ################################################################################
-class FormChannelRoleStatusView(FroggeView):
+class FormChannelStatusView(FroggeView):
 
     def __init__(self, owner: User, form: Form):
         
@@ -22,6 +22,7 @@ class FormChannelRoleStatusView(FroggeView):
         button_list = [
             AddRoleButton(),
             RemoveRoleButton(),
+            ModifyCreateCategoryButton(),
             CloseMessageButton(),
         ]
         for btn in button_list:
@@ -44,7 +45,7 @@ class AddRoleButton(FroggeButton):
     async def callback(self, interaction: Interaction):
         await self.view.ctx.add_channel_role(interaction)        
         await self.view.edit_message_helper(
-            interaction, embed=self.view.ctx.channel_roles_status(), view=self.view
+            interaction, embed=self.view.ctx.channel_status(), view=self.view
         )
         
 ################################################################################
@@ -62,7 +63,25 @@ class RemoveRoleButton(FroggeButton):
     async def callback(self, interaction: Interaction):
         await self.view.ctx.remove_channel_role(interaction)
         await self.view.edit_message_helper(
-            interaction, embed=self.view.ctx.channel_roles_status(), view=self.view
+            interaction, embed=self.view.ctx.channel_status(), view=self.view
+        )
+        
+################################################################################
+class ModifyCreateCategoryButton(FroggeButton):
+    
+    def __init__(self):
+        
+        super().__init__(
+            style=ButtonStyle.primary,
+            label="Select Create Category",
+            disabled=False,
+            row=0
+        )
+        
+    async def callback(self, interaction: Interaction):
+        await self.view.ctx.set_category(interaction)
+        await self.view.edit_message_helper(
+            interaction, embed=self.view.ctx.channel_status(), view=self.view
         )
         
 ################################################################################

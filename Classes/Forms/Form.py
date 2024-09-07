@@ -2,7 +2,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional, Type, TypeVar, Dict, Any
 
-from discord import TextChannel, Embed, Role, Interaction, SelectOption, User
+from discord import (
+    TextChannel,
+    Embed,
+    Role,
+    Interaction,
+    SelectOption,
+    User, 
+    CategoryChannel
+)
 
 from Assets import BotEmojis
 from Errors import MaxItemsReached, ChannelNotSet, IncompleteForm
@@ -16,7 +24,7 @@ from UI.Forms import (
     FormStatusView,
     FormPromptsMenuView,
     FormNotificationsMenuView,
-    FormChannelRoleStatusView,
+    FormChannelStatusView,
 )
 from Utilities import Utilities as U
 from .FormQuestion import FormQuestion
@@ -46,6 +54,7 @@ class Form:
         "_to_notify",
         "_create_channel",
         "_channel_roles",
+        "_category",
     )
     
     MAX_QUESTIONS = 20
@@ -68,6 +77,7 @@ class Form:
         self._to_notify: List[User] = kwargs.get("to_notify", [])
         self._create_channel: bool = kwargs.get("create_channel", False)
         self._channel_roles: List[Role] = kwargs.get("channel_roles", [])
+        self._category: Optional[CategoryChannel] = kwargs.get("category")
     
 ################################################################################
     @classmethod
@@ -115,6 +125,7 @@ class Form:
             await mgr.guild.get_or_fetch_role(r)
             for r in fdata[6]
         ]
+        self._category = await mgr.guild.get_or_fetch_channel(fdata[7])
         
         return self
     
@@ -196,6 +207,18 @@ class Form:
         return self._channel_roles
     
 ################################################################################
+    @property
+    def category_channel(self) -> Optional[CategoryChannel]:
+        
+        return self._category
+    
+    @category_channel.setter
+    def category_channel(self, value: CategoryChannel) -> None:
+        
+        self._category = value
+        self.update()
+        
+################################################################################
     def update(self) -> None:
         
         self.bot.database.update.form(self)
@@ -218,6 +241,9 @@ class Form:
         )
         if self.create_channel:
             desc += (
+                "__**Creation Category**__\n"
+                f"{self._category.mention if self._category else '`Not Set`'}\n\n"
+                
                 "__**Roles With Access to Created Channel**__\n" +
                 ("\n".join(
                     f"* {r.mention}"
@@ -381,7 +407,7 @@ class Form:
 ################################################################################
     async def user_menu(self, interaction: Interaction) -> None:
         
-        if self._pre_prompt is not None:
+        if self._pre_prompt is not None and self._pre_prompt.is_filled_out:
             if not await self._pre_prompt.send(interaction):
                 return
 
@@ -422,7 +448,7 @@ class Form:
             await interaction.respond(embed=error, ephemeral=True)
             return False
         
-        if self._post_prompt is not None:
+        if self._post_prompt is not None and self._post_prompt.is_filled_out:
             if not await self._post_prompt.send(interaction):
                 return False
 
@@ -444,7 +470,7 @@ class Form:
         for q in self.questions:
             q.delete_response(interaction.user)
 
-        await inter.delete_original_response()
+        await inter.delete()
         msg = await self.channel.send(embed=new_collection.compile())
         
         if self._to_notify:
@@ -598,7 +624,10 @@ class Form:
         guild = self._mgr.guild.parent
         member = await self._mgr.guild.get_or_fetch_member(user.id)
         
-        channel = await guild.create_text_channel(member.display_name)
+        if self._category is not None:
+            channel = await self._category.create_text_channel(member.display_name)
+        else:
+            channel = await guild.create_text_channel(member.display_name)
         
         await channel.set_permissions(guild.default_role, view_channel=False)
         await channel.set_permissions(member, view_channel=True)
@@ -614,11 +643,14 @@ class Form:
         await interaction.respond("** **", delete_after=0.1)
         
 ################################################################################
-    def channel_roles_status(self) -> Embed:
+    def channel_status(self) -> Embed:
         
         return U.make_embed(
             title=f"__Channel Roles for: `{self.name}`__",
             description=(
+                "__**Creation Category**__\n"
+                f"{self._category.mention if self._category else '`Not Set`'}\n\n"
+                
                 "__**Roles With Access to Created Channel**__\n" +
                 ("\n".join(
                     f"* {r.mention} ({r.name})"
@@ -629,10 +661,10 @@ class Form:
         )
     
 ################################################################################
-    async def manage_channel_roles(self, interaction: Interaction) -> None:
+    async def manage_channel(self, interaction: Interaction) -> None:
         
-        embed = self.channel_roles_status()
-        view = FormChannelRoleStatusView(interaction.user, self)
+        embed = self.channel_status()
+        view = FormChannelStatusView(interaction.user, self)
         
         await interaction.respond(embed=embed, view=view)
         await view.wait()
@@ -668,5 +700,30 @@ class Form:
         
         self._channel_roles.remove(role)
         self.update()
+        
+################################################################################
+    async def set_category(self, interaction: Interaction) -> None:
+        
+        options = [
+            SelectOption(
+                label=category.name,
+                value=str(category.id)
+            )
+            for category in self._mgr.guild.parent.categories
+        ]
+        
+        prompt = U.make_embed(
+            title="__Set Creation Category__",
+            description="Please select the category where created channels should be placed."
+        )
+        view = FroggeSelectView(interaction.user, options)
+        
+        await interaction.respond(embed=prompt, view=view)
+        await view.wait()
+        
+        if not view.complete or view.value is False:
+            return
+        
+        self.category_channel = self.bot.get_channel(int(view.value))
         
 ################################################################################

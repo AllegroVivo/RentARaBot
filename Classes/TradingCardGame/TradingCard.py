@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Type, TypeVar, Any, Dict, List
+from typing import TYPE_CHECKING, Optional, Type, TypeVar, Any, Dict, List, Tuple
 
 from discord import Embed, EmbedField, Interaction, SelectOption
 
@@ -69,6 +69,11 @@ class TradingCard:
     def __eq__(self, other: TradingCard) -> bool:
         
         return self.id == other.id
+    
+################################################################################
+    def __hash__(self) -> int:
+        
+        return hash(self.id)
     
 ################################################################################
     @property
@@ -373,15 +378,17 @@ class TradingCard:
         await self._stats.set_values(interaction)
                     
 ################################################################################
-    def compare_bad(self, rand: int) -> bool:
+    def compare_bad(self, rand: int) -> Optional[Tuple[int, int]]:
+        """Compare the BAD stat of the card to a value. Returns the index and 
+        individual BAD value if they match."""
         
         bad_list = self.int_to_list(self.bad)
         rand_list = self.int_to_list(rand)
         
         for i, b in enumerate(bad_list):
             if b == rand_list[i]:
-                return True
+                return i, b
             
-        return False
+        return None
     
 ################################################################################

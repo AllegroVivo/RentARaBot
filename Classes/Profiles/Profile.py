@@ -32,7 +32,12 @@ from Errors import (
     PreferencesIncomplete
 )
 from UI.Common import CloseMessageView, FroggeSelectView, ConfirmCancelView
-from UI.Profiles import ProfileMainMenuView, PersonalityPreferencePickView, PublicPrivateView
+from UI.Profiles import (
+    ProfileMainMenuView,
+    PersonalityPreferencePickView,
+    PublicPrivateView,
+    ProfileMatchingView,
+)
 from Utilities import Utilities as U
 from .ProfileAtAGlance import ProfileAtAGlance
 from .ProfileDetails import ProfileDetails
@@ -516,6 +521,7 @@ class Profile:
             title="Profile Posted!",
             description=(
                 "Hey, good job, you did it! Your profile was posted successfully!\n"
+                "You may now use the matching system with the `/match` command!\n"
                 f"{U.draw_line(extra=37)}\n"
                 f"(__Character Name:__ ***{self.name}***)\n"
                 f"{link_text}"
@@ -605,8 +611,8 @@ class Profile:
         
         matches_str = ""
         for pair in matches:
-            user, score = pair
-            matches_str += f"**{user.display_name}** -- `{score}%`\n"
+            profile, score = pair
+            matches_str += f"**{profile.user.display_name}** -- `{score}%`\n"
 
         embed = U.make_embed(
             title="__Top Matches__",
@@ -616,7 +622,10 @@ class Profile:
                 f"{matches_str}"
             )
         )
-        await interaction.respond(embed=embed)  # , ephemeral=True)
+        view = ProfileMatchingView(interaction.user, [m[0] for m in matches])
+        
+        await interaction.respond(embed=embed, view=view)  # , ephemeral=True)
+        await view.wait()
         
 ################################################################################
     async def delete_profile_post(self) -> bool:
@@ -654,4 +663,27 @@ class Profile:
             await self.delete_profile_post()
             self.post_url = new_msg.jump_url
 
+################################################################################
+    async def make_contact(self, interaction: Interaction) -> None:
+        
+        p2 = self._mgr.get_profile(interaction.user)
+        m1 = await self._mgr.guild.get_or_fetch_member(self.user.id)
+        
+        channel = await interaction.guild.create_text_channel(f"{self.name}-{p2.name}")
+        
+        await channel.set_permissions(interaction.guild.default_role, view_channel=False)
+        await channel.set_permissions(m1, view_channel=True)
+        await channel.set_permissions(interaction.user, view_channel=True)
+        
+        success = U.make_embed(
+            title="__Contact Created__",
+            description=(
+                f"A new contact channel has been created for you and {self.name}!\n\n"
+                f"Please use this channel to communicate with one another.\n\n"
+                
+                f"**Channel:** {channel.mention}"
+            )
+        )
+        await interaction.respond(embed=success)
+    
 ################################################################################

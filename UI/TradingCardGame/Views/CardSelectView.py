@@ -20,6 +20,8 @@ class CardSelectView(FroggeView):
         chunk_size = 20
         chunked_options = []
         
+        options.sort(key=lambda x: x.description)
+        
         for i in range(0, len(options), chunk_size):
             chunked_options.append(options[i:i + chunk_size])
 
@@ -36,7 +38,7 @@ class CardSelect(Select):
             options.append(SelectOption(label="No options available", value="-1"))
         
         super().__init__(
-            placeholder="Select a card..." if row == 0 else None,
+            placeholder="Select a card..." if row == 0 else "",
             options=options,
             disabled=options[0].value == "-1",
             row=row,

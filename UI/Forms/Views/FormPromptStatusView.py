@@ -23,6 +23,7 @@ class FormPromptStatusView(FroggeView):
             SetTitleButton(),
             SetDescriptionButton(),
             SetThumbnailButton(),
+            ToggleCancelButton(),
             CloseMessageButton(),
             RemovePromptButton(),
         ]
@@ -81,6 +82,36 @@ class SetDescriptionButton(FroggeButton):
         
     async def callback(self, interaction: Interaction):
         await self.view.ctx.set_description(interaction)
+        await self.view.edit_message_helper(
+            interaction, embed=self.view.ctx.status(), view=self.view
+        )
+        
+################################################################################
+class ToggleCancelButton(FroggeButton):
+    
+    def __init__(self):
+        
+        super().__init__(
+            disabled=False,
+            row=0
+        )
+        
+    def set_attributes(self) -> None:
+        self.style = (
+            ButtonStyle.success
+            if self.view.ctx.show_cancel 
+            else ButtonStyle.secondary
+        )
+        self.label = (
+            "Show Cancel: ON"
+            if self.view.ctx.show_cancel
+            else "Show Cancel: OFF"
+        )
+        
+    async def callback(self, interaction: Interaction):
+        await self.view.ctx.toggle_cancel_button(interaction)
+        self.set_attributes()
+        
         await self.view.edit_message_helper(
             interaction, embed=self.view.ctx.status(), view=self.view
         )

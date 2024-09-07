@@ -13,7 +13,7 @@ from UI.TradingCardGame import CardCollectionMenuView, CardSelectView, UserColle
 from Utilities import Utilities as U
 
 if TYPE_CHECKING:
-    from Classes import TradingCard, CollectionManager, CardManager, RentARaBot
+    from Classes import TradingCard, CollectionManager, CardManager, RentARaBot, CardSeries
 ################################################################################
 
 __all__ = ("CardCollection", )
@@ -332,12 +332,14 @@ class CardCollection:
             return
         
         cards = [
-            cfg.get_card(self) for cfg in self._mgr.booster_config.card_configs
+            cfg.get_random_card(self) 
+            for cfg in self._mgr.booster_config.card_configs
         ]
+        final_cards = [c for c in cards if c is not None]
         
         self.booster_packs -= 1
         
-        for card in cards:
+        for card in final_cards:
             self._add_card(card)
             await interaction.respond(embed=card.status())
 
@@ -392,5 +394,10 @@ class CardCollection:
 
         await interaction.respond(embed=embed, view=view)
         await view.wait()
+
+################################################################################
+    def get_cards_by_series(self, series: CardSeries) -> List[TradingCard]:
+        
+        return [c.card for c in self._cards if c.card.series == series]
 
 ################################################################################
