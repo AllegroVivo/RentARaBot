@@ -46,12 +46,8 @@ class Database:
         load_dotenv()
 
         self._reset_connection()
-        
-        if os.getenv("DEBUG") == "True":
-            self._connection = psycopg2.connect(os.getenv("DATABASE_URL"))
-        else:
-            self._connection = psycopg2.connect(os.getenv("HEROKU_POSTGRESQL_NAVY_URL"), sslmode="require")
-            
+
+        self._connection = psycopg2.connect(os.getenv("DATABASE_URL"))
         self._cursor = self._connection.cursor()
 
         print("Connecting to database")
