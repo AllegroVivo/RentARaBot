@@ -10,57 +10,61 @@ if TYPE_CHECKING:
     from Classes import Form
 ################################################################################
 
-__all__ = ("FormNotificationsMenuView",)
+__all__ = ("FormNotificationPartyView",)
 
 ################################################################################
-class FormNotificationsMenuView(FroggeView):
+class FormNotificationPartyView(FroggeView):
 
-    def __init__(self, owner: User, form: Form):
+    def __init__(self, owner: User, option: Form):
         
-        super().__init__(owner, form)
+        super().__init__(owner, option)
         
         button_list = [
-            AddNotificationButton(),
-            RemoveNotificationButton(),
+            PickUserButton(),
+            PickRoleButton(),
             CloseMessageButton()
         ]
         for btn in button_list:
             self.add_item(btn)
+            
+        self.set_button_attributes()
         
 ################################################################################
-class AddNotificationButton(FroggeButton):
+class PickUserButton(FroggeButton):
     
     def __init__(self):
         
         super().__init__(
-            style=ButtonStyle.success,
-            label="Add Notification Party",
+            style=ButtonStyle.primary,
+            label="User",
             disabled=False,
             row=0
         )
         
     async def callback(self, interaction: Interaction):
-        await self.view.ctx.add_notification(interaction)
-        await self.view.edit_message_helper(
-            interaction, embed=self.view.ctx.notifications_status(), view=self.view
-        )
+        self.view.value = True
+        self.view.complete = True
+
+        await self.view.dummy_response(interaction)
+        await self.view.stop()  # type: ignore
         
 ################################################################################
-class RemoveNotificationButton(FroggeButton):
+class PickRoleButton(FroggeButton):
     
     def __init__(self):
         
         super().__init__(
-            style=ButtonStyle.danger,
-            label="Remove Notification Party",
+            style=ButtonStyle.primary,
+            label="Role",
             disabled=False,
             row=0
         )
         
     async def callback(self, interaction: Interaction):
-        await self.view.ctx.remove_notification(interaction)
-        await self.view.edit_message_helper(
-            interaction, embed=self.view.ctx.notifications_status(), view=self.view
-        )
+        self.view.value = False
+        self.view.complete = True
+
+        await self.view.dummy_response(interaction)
+        await self.view.stop()  # type: ignore
         
 ################################################################################

@@ -1,4 +1,5 @@
 from .FormPromptsMenuView import FormPromptsMenuView
+from .FormNotificationPartyView import FormNotificationPartyView
 from .FormChannelStatusView import FormChannelStatusView
 from .FormPromptStatusView import FormPromptStatusView
 from .FormNotificationsMenuView import FormNotificationsMenuView

@@ -178,7 +178,8 @@ class FormQuestion:
 ################################################################################
     @property
     def options(self) -> List[FormOption]:
-        
+
+        self._options.sort(key=lambda o: o.label.lower() or "")
         return self._options
     
 ################################################################################
@@ -505,7 +506,7 @@ class FormQuestion:
         assert self.ui_type == UIComponentType.LongText, f"Invalid UI Component Type: {self.ui_type.proper_name}"
 
         modal = BasicTextModal(
-            title=self.primary_text,
+            title=U.string_clamp(self.primary_text, 45),
             attribute="Response",
             max_length=500,
             required=self.required,

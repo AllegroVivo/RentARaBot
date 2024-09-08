@@ -223,7 +223,8 @@ class FormOption:
             attribute="Description",
             example="eg. 'This option is for users who are over 18.'",
             cur_val=self.description,
-            max_length=80
+            max_length=80,
+            required=False
         )
 
         await interaction.response.send_modal(modal)
@@ -241,7 +242,8 @@ class FormOption:
             title="Enter Option Value",
             attribute="Value",
             cur_val=self.value,
-            max_length=80
+            max_length=80,
+            required=False
         )
 
         await interaction.response.send_modal(modal)
@@ -250,7 +252,7 @@ class FormOption:
         if not modal.complete:
             return
 
-        self.value = modal.value
+        self.value = modal.value or self.label
     
 ################################################################################
     async def set_emoji(self, interaction: Interaction) -> None:

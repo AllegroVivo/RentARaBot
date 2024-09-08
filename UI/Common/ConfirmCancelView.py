@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import Union, Literal
 
 from discord import ButtonStyle, Interaction, Member, User
-from discord.ui import button
+from discord.ui import Button
 
 from .FroggeView import FroggeView
-
-if TYPE_CHECKING:
-    pass
 ################################################################################
 
 __all__ = ("ConfirmCancelView",)
@@ -16,39 +13,50 @@ __all__ = ("ConfirmCancelView",)
 ################################################################################
 class ConfirmCancelView(FroggeView):
 
-    def __init__(self, owner: Union[Member, User], return_interaction: bool = False, **kwargs):
+    def __init__(
+        self, 
+        owner: Union[Member, User],
+        return_interaction: bool = False,
+        include_cancel: bool = True,
+        confirm_text: str = "Confirm",
+        cancel_text: str = "Cancel",
+        **kwargs
+    ):
         
         self.return_interaction: bool = return_interaction
         super().__init__(owner, None, **kwargs)
 
-    @button(
-        style=ButtonStyle.success,
-        label="Confirm",
-        disabled=False,
-        row=0
-    )
-    async def confirm(self, _, interaction: Interaction):
-        self.value = (
-            True if not self.return_interaction
-            else (True, interaction)
+        self.add_item(ConfirmCancelButton(confirm_text, 1))
+        if include_cancel:
+            self.add_item(ConfirmCancelButton(cancel_text, 2))
+
+################################################################################
+class ConfirmCancelButton(Button):
+    
+    def __init__(self, text: str, button_type: int):
+        
+        super().__init__(
+            style=(
+                ButtonStyle.success 
+                if button_type == 1
+                else ButtonStyle.danger
+            ),
+            label=text,
+            disabled=False,
+            row=0
         )
-        self.complete = True
-
-        if not self.return_interaction:
-            await interaction.response.edit_message()
-        await self.stop()  # type: ignore
-
-    @button(
-        style=ButtonStyle.danger,
-        label="Cancel",
-        disabled=False,
-        row=0
-    )
-    async def cancel(self, _, interaction: Interaction):
-        self.value = False
-        self.complete = True
-
-        await interaction.response.edit_message()
-        await self.stop()  # type: ignore
-
+    
+        self._type: int = button_type
+        
+    async def callback(self, interaction: Interaction):
+        self.view.value = (
+            True if not self.view.return_interaction
+            else (True, interaction)
+        ) if self._type == 1 else False
+        self.view.complete = True
+        
+        if self._type == 1 and not self.view.return_interaction:
+            await self.view.dummy_response(interaction)
+        await self.view.stop()  # type: ignore
+        
 ################################################################################

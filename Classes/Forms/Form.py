@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Type, TypeVar, Dict, Any
+from typing import TYPE_CHECKING, List, Optional, Type, TypeVar, Dict, Any, Union
 
 from discord import (
     TextChannel,
@@ -25,6 +25,7 @@ from UI.Forms import (
     FormPromptsMenuView,
     FormNotificationsMenuView,
     FormChannelStatusView,
+    FormNotificationPartyView
 )
 from Utilities import Utilities as U
 from .FormQuestion import FormQuestion
@@ -32,7 +33,7 @@ from .FormResponseCollection import FormResponseCollection
 from .FormPrompt import FormPrompt
 
 if TYPE_CHECKING:
-    from Classes import FormsManager, RentARaBot
+    from Classes import FormsManager, RentARaBot, GuildData
 ################################################################################
 
 __all__ = ("Form", )
@@ -74,7 +75,7 @@ class Form:
         self._pre_prompt: Optional[FormPrompt] = kwargs.get("pre_prompt")
         self._post_prompt: Optional[FormPrompt] = kwargs.get("post_prompt")
         
-        self._to_notify: List[User] = kwargs.get("to_notify", [])
+        self._to_notify: List[Union[User, Role]] = kwargs.get("to_notify", [])
         self._create_channel: bool = kwargs.get("create_channel", False)
         self._channel_roles: List[Role] = kwargs.get("channel_roles", [])
         self._category: Optional[CategoryChannel] = kwargs.get("category")
@@ -116,10 +117,12 @@ class Form:
             else None
         )
         
-        self._to_notify = [
-            await mgr.guild.get_or_fetch_member_or_user(u)
-            for u in fdata[4]
+        possible_notifications = [
+            await self._fetch_user_or_role(mgr.guild, notif)
+            for notif in fdata[4]
         ]
+
+        self._to_notify = [n for n in possible_notifications if n is not None]
         self._create_channel = fdata[5]
         self._channel_roles = [
             await mgr.guild.get_or_fetch_role(r)
@@ -129,6 +132,16 @@ class Form:
         
         return self
     
+################################################################################
+    @staticmethod
+    async def _fetch_user_or_role(guild: GuildData, _id: int) -> Union[User, Role]:
+
+        ret = await guild.get_or_fetch_role(_id)
+        if ret is not None:
+            return ret
+
+        return await guild.get_or_fetch_member_or_user(_id)
+
 ################################################################################
     def __eq__(self, other: Form) -> bool:
         
@@ -202,7 +215,7 @@ class Form:
        
 ################################################################################
     @property
-    def channel_roles(self) -> List[Role]:
+    def channel_roles(self) -> List[Union[User, Role]]:
         
         return self._channel_roles
     
@@ -251,10 +264,10 @@ class Form:
                 ) if self.channel_roles else "`Not Set`") + "\n\n"
             )
         desc += (
-            "__**Users to Notify Upon Submission**__\n" + (
+            "__**Parties to Notify Upon Submission**__\n" + (
                 "\n".join(
-                    f"* {u.mention} ({u.display_name})"
-                    for u in self._to_notify
+                    f"* {notif.mention} ({notif.name})"
+                    for notif in self._to_notify
                 )
                 if self._to_notify
                 else "`No users to notify.`"
@@ -432,7 +445,7 @@ class Form:
     async def submit(self, interaction: Interaction) -> bool:
 
         if self.channel is None:
-            error = ChannelNotSet("Staff Applications")
+            error = ChannelNotSet("Form Channel")
             await interaction.respond(embed=error, ephemeral=True)
             return False
 
@@ -470,8 +483,18 @@ class Form:
         for q in self.questions:
             q.delete_response(interaction.user)
 
+        roles = []
+        users = []
+        for notif in self._to_notify:
+            if isinstance(notif, Role):
+                roles.append(notif)
+            elif isinstance(notif, User):
+                users.append(notif)
+
+        role_str = ", ".join(r.mention for r in roles)
+
         await inter.delete()
-        msg = await self.channel.send(embed=new_collection.compile())
+        msg = await self.channel.send(content=role_str or None, embed=new_collection.compile())
         
         if self._to_notify:
             confirm = U.make_embed(
@@ -483,8 +506,8 @@ class Form:
                     f"You can view the form response here: {msg.jump_url}"
                 )
             )
-            
-            for user in self._to_notify:
+
+            for user in users:
                 try:
                     await user.send(embed=confirm)
                 except:
@@ -561,10 +584,10 @@ class Form:
         return U.make_embed(
             title=f"__Form Status for: `{self.name}`__",
             description=(
-                "__**Users to Notify Upon Submission**__\n" + (
+                "__**Notification Parties**__\n" + (
                     "\n".join(
-                        f"* {u.mention} ({u.display_name})"
-                        for u in self._to_notify
+                        f"* {notif.mention} ({notif.name})"
+                        for notif in self._to_notify
                     )
                     if self._to_notify
                     else "`No users to notify.`"
@@ -588,7 +611,47 @@ class Form:
             error = MaxItemsReached("Users to Notify", self.MAX_TO_NOTIFY)
             await interaction.respond(embed=error, ephemeral=True)
             return
-        
+
+        prompt = U.make_embed(
+            title="__Add User or Role?__",
+            description="Would you like to notify a user or a role?"
+        )
+        view = FormNotificationPartyView(interaction.user, self)
+
+        await interaction.respond(embed=prompt, view=view)
+        await view.wait()
+
+        if not view.complete:
+            return
+
+        if view.value is False:
+            await self.add_notification_role(interaction)
+        else:
+            await self.add_notification_user(interaction)
+
+################################################################################
+    async def remove_notification(self, interaction: Interaction) -> None:
+
+        prompt = U.make_embed(
+            title="__Remove User or Role?__",
+            description="Would you like to remove a user or a role?"
+        )
+        view = FormNotificationPartyView(interaction.user, self)
+
+        await interaction.respond(embed=prompt, view=view)
+        await view.wait()
+
+        if not view.complete:
+            return
+
+        if view.value is False:
+            await self.remove_notification_role(interaction)
+        else:
+            await self.remove_notification_user(interaction)
+
+################################################################################
+    async def add_notification_user(self, interaction: Interaction) -> None:
+
         prompt = U.make_embed(
             title="__Add User to Notify__",
             description="Mention the user you want to notify upon form submission."
@@ -601,7 +664,21 @@ class Form:
         self.update()
     
 ################################################################################
-    async def remove_notification(self, interaction: Interaction) -> None:
+    async def add_notification_role(self, interaction: Interaction) -> None:
+
+        prompt = U.make_embed(
+            title="__Add Role to Notify__",
+            description="Mention the role you want to notify upon form submission."
+        )
+        role = await U.listen_for(interaction, prompt, U.MentionableType.Role)
+        if role is None:
+            return
+
+        self._to_notify.append(role)
+        self.update()
+
+################################################################################
+    async def remove_notification_user(self, interaction: Interaction) -> None:
         
         prompt = U.make_embed(
             title="__Remove User to Notify__",
@@ -618,6 +695,24 @@ class Form:
         self._to_notify.remove(user)
         self.update()
     
+################################################################################
+    async def remove_notification_role(self, interaction: Interaction) -> None:
+
+        prompt = U.make_embed(
+            title="__Remove Role to Notify__",
+            description="Mention the role you want to remove from the notification list."
+        )
+        role = await U.listen_for(interaction, prompt, U.MentionableType.Role)
+        if role is None:
+            return
+
+        if role not in self._to_notify:
+            await interaction.respond("Role is not in the notification list.")
+            return
+
+        self._to_notify.remove(role)
+        self.update()
+
 ################################################################################
     async def _create_form_channel(self, user: User, response: FormResponseCollection) -> None:
         

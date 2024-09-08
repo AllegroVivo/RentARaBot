@@ -563,7 +563,7 @@ class Utilities:
     @staticmethod
     def string_clamp(text: str, length: int) -> str:
 
-        return text[:length] + "..." if len(text) > length else text
+        return text[:length - 3] + "..." if len(text) > length else text
 
 ################################################################################
     @staticmethod

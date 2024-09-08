@@ -326,11 +326,11 @@ class CardBattle:
                     p1_absolute_value = p1_card.get_absolute_value(stat, roll_result)
                     p2_absolute_value = p2_card.get_absolute_value(stat, roll_result)
 
-                    description = f"`{self._p1.user.display_name}` Absolute Distance: `{p1_absolute_value}`"
+                    description = f"{self._p1.user.display_name} Absolute Distance: `{p1_absolute_value}`"
                     if p1_absolute_value < p2_absolute_value:
                         description += " *(WINNER)*"
                     description += "\n"
-                    description += f"`{self._p2.user.display_name}` Absolute Distance: `{p2_absolute_value}`"
+                    description += f"{self._p2.user.display_name} Absolute Distance: `{p2_absolute_value}`"
                     if p2_absolute_value < p1_absolute_value:
                         description += " *(WINNER)*"
 
