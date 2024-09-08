@@ -62,6 +62,7 @@ class DatabaseLoader(DBWorkerBranch):
             "tcg_rarity_weights",
             "tcg_card_decks",
             "tcg_deck_card_slots",
+            "profile_managers",
         ]
 
         ret = {}
@@ -77,6 +78,7 @@ class DatabaseLoader(DBWorkerBranch):
             g.id: {
                 "forms": [],
                 "profiles": {
+                    "category_id": None,
                     "requirements": None,
                     "profiles": [],
                     "channels": [],
@@ -189,6 +191,8 @@ class DatabaseLoader(DBWorkerBranch):
             })
         for group in payload["profile_channel_groups"]:
             ret[group[1]]["profiles"]["channels"].append(group)
+        for mgr in payload["profile_managers"]:
+            ret[mgr[0]]["profiles"]["category_id"] = mgr[1]
             
         # Trading Cards
         for series in payload["trading_card_series"]:

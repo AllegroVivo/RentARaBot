@@ -9,7 +9,9 @@ from discord import (
     Interaction,
     TextChannel,
     ForumChannel,
-    User, Member
+    User,
+    Member,
+    CategoryChannel, SelectOption
 )
 
 from Utilities import Utilities as U
@@ -34,6 +36,7 @@ class ProfileManager:
         "_profiles",
         "_requirements",
         "_channels",
+        "_category",
     )
     
     MAX_CHANNEL_GROUPS = 8  # (Three fields per line in the embed) 
@@ -47,6 +50,8 @@ class ProfileManager:
         
         self._requirements: ProfileRequirements = ProfileRequirements(self)
         self._channels: List[ProfileChannelGroup] = []
+
+        self._category: Optional[CategoryChannel] = None
     
 ################################################################################
     async def load_all(self, payload: Dict[str, Any]) -> None:
@@ -64,6 +69,9 @@ class ProfileManager:
         self._profiles = profiles
         
         self._requirements.load(payload["requirements"])
+
+        print(payload)
+        self._category = await self.guild.get_or_fetch_channel(payload["category_id"])
     
 ################################################################################
     def __getitem__(self, profile_id: str) -> Optional[Profile]:
@@ -118,6 +126,18 @@ class ProfileManager:
         return [c for group in self._channels for c in group.channels]
     
 ################################################################################
+    @property
+    def match_category(self) -> Optional[CategoryChannel]:
+
+        return self._category
+
+    @match_category.setter
+    def match_category(self, value: Optional[CategoryChannel]) -> None:
+
+        self._category = value
+        self.update()
+
+################################################################################
     def update(self) -> None:
         
         self.bot.database.update.profile_manager(self)
@@ -157,7 +177,10 @@ class ProfileManager:
                 
                 f"**[`{len(self._channels)}`]** Channel Groups Defined with...\n"
                 f"**[`{len(channels)}`]** Channels available for posting by...\n"
-                f"**[`{len(roles)}`]** Roles\n"
+                f"**[`{len(roles)}`]** Roles\n\n"
+                
+                f"__**Matching System Channel Create Category:**__\n"
+                f"**[`{self._category.name if self._category else 'Not Set'}`]**"
             ),
             fields=[
                 EmbedField(
@@ -368,5 +391,33 @@ class ProfileManager:
         
         if profile := self.get_profile(member):  # type: ignore
             await profile.delete_profile_post()
+
+################################################################################
+    async def set_category(self, interaction: Interaction) -> None:
+
+        options = [
+            SelectOption(
+                label=c.name,
+                value=str(c.id)
+            )
+            for c in self.guild.parent.categories
+        ]
+
+        prompt = U.make_embed(
+            title="__Set Category__",
+            description=(
+                "Please select the category where new matching system "
+                "communication channels will be created."
+            )
+        )
+        view = FroggeSelectView(interaction.user, options)
+
+        await interaction.respond(embed=prompt, view=view)
+        await view.wait()
+
+        if not view.complete or view.value is False:
+            return
+
+        self.match_category = await self.guild.get_or_fetch_channel(int(view.value))
 
 ################################################################################

@@ -70,10 +70,8 @@ class DatabaseUpdater(DBWorkerBranch):
     def _update_profile_system(self, mgr: ProfileManager) -> None:
         
         self.execute(
-            "UPDATE profile_systems SET staff_channels = %s, "
-            "public_channels = %s, staff_roles = %s WHERE guild_id = %s",
-            [ch.id for ch in mgr.staff_channels],
-            [ch.id for ch in mgr.public_channels], [r.id for r in mgr.staff_roles], 
+            "UPDATE profile_managers SET category_id = %s WHERE guild_id = %s",
+            mgr.match_category.id if mgr.match_category is not None else None,
             mgr.guild.guild_id
         )
         

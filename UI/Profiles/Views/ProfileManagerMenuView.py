@@ -22,6 +22,7 @@ class ProfileManagerMenuView(FroggeView):
         button_list = [
             ManageChannelsButton(),
             ModifyRequirementsButton(),
+            SetCategoryButton(),
             CloseMessageButton()
         ]
         for btn in button_list:
@@ -65,4 +66,22 @@ class ModifyRequirementsButton(FroggeButton):
             interaction, embed=self.view.ctx.status(), view=self.view
         )
         
+################################################################################
+class SetCategoryButton(FroggeButton):
+
+    def __init__(self):
+
+        super().__init__(
+            style=ButtonStyle.primary,
+            label="Set Matching System Channel Create Category",
+            disabled=False,
+            row=1
+        )
+
+    async def callback(self, interaction: Interaction):
+        await self.view.ctx.set_category(interaction)
+        await self.view.edit_message_helper(
+            interaction, embed=self.view.ctx.status(), view=self.view
+        )
+
 ################################################################################
