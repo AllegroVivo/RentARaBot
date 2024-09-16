@@ -624,7 +624,7 @@ class Profile:
         )
         view = ProfileMatchingView(interaction.user, [m[0] for m in matches])
         
-        await interaction.respond(embed=embed, view=view)  # , ephemeral=True)
+        await interaction.respond(embed=embed, view=view, ephemeral=True)
         await view.wait()
         
 ################################################################################
@@ -691,6 +691,6 @@ class Profile:
                 f"**Channel:** {channel.mention}"
             )
         )
-        await interaction.respond(embed=success)
+        await interaction.respond(embed=success, ephemeral=True)
     
 ################################################################################

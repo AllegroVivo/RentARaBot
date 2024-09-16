@@ -162,21 +162,21 @@ class TradingCard:
     
 ################################################################################
     @property
-    def battle(self) -> Optional[int]:
+    def cute(self) -> Optional[int]:
         
-        return self._stats.battle_stat
+        return self._stats.cute_stat
     
 ################################################################################
     @property
-    def nsfw(self) -> Optional[int]:
+    def cuddle(self) -> Optional[int]:
         
-        return self._stats.nsfw_stat
+        return self._stats.cuddle_stat
     
 ################################################################################
     @property
-    def sfw(self) -> Optional[int]:
+    def crush(self) -> Optional[int]:
         
-        return self._stats.sfw_stat
+        return self._stats.crush_stat
     
 ################################################################################
     @property
@@ -194,9 +194,9 @@ class TradingCard:
             self.image is not None,
             self.permalink is not None,
             self.rarity is not None,
-            self.battle is not None,
-            self.nsfw is not None,
-            self.sfw is not None,
+            self.cute is not None,
+            self.cuddle is not None,
+            self.crush is not None,
             self.die_marker is not None,
             self.bad is not None
         ]) 
@@ -230,12 +230,12 @@ class TradingCard:
     def get_absolute_value(self, stat: str, rand: int) -> int:
 
         match stat.lower():
-            case "battle":
-                stat_value = self.battle
-            case "nsfw":
-                stat_value = self.nsfw
-            case "sfw":
-                stat_value = self.sfw
+            case "cute":
+                stat_value = self.cute
+            case "cuddle":
+                stat_value = self.cuddle
+            case "crush":
+                stat_value = self.crush
             case _:
                 raise ValueError(f"Invalid Stat: {stat}")
 
@@ -249,9 +249,9 @@ class TradingCard:
 ################################################################################
     def status(self) -> Embed:
         
-        battle_stat = f"{self.battle:03d}" if self.battle is not None else "---"
-        nsfw_stat = f"{self.nsfw:03d}" if self.nsfw is not None else "---"
-        sfw_stat = f"{self.sfw:03d}" if self.sfw is not None else "---"
+        battle_stat = f"{self.cute:03d}" if self.cute is not None else "---"
+        nsfw_stat = f"{self.cuddle:03d}" if self.cuddle is not None else "---"
+        sfw_stat = f"{self.crush:03d}" if self.crush is not None else "---"
         permalink = f"[Click Here]({self.permalink})" if self.permalink else "`Not Set`"
         
         return U.make_embed(

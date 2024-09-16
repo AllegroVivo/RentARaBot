@@ -45,8 +45,8 @@ class CardStatsModal(FroggeModal):
         self.add_item(
             InputText(
                 style=InputTextStyle.singleline,
-                label="BATTLE",
-                placeholder="Enter BATTLE Value",
+                label="CUTE",
+                placeholder="Enter CUTE Value",
                 value=f"{current_values[2]:03d}" if current_values[2] is not None else None,
                 required=True,
                 min_length=3,
@@ -57,8 +57,8 @@ class CardStatsModal(FroggeModal):
         self.add_item(
             InputText(
                 style=InputTextStyle.singleline,
-                label="NSFW",
-                placeholder="Enter NSFW Value",
+                label="CUDDLE",
+                placeholder="Enter CUDDLE Value",
                 value=f"{current_values[3]:03d}" if current_values[3] is not None else None,
                 required=True,
                 min_length=3,
@@ -69,8 +69,8 @@ class CardStatsModal(FroggeModal):
         self.add_item(
             InputText(
                 style=InputTextStyle.singleline,
-                label="SFW",
-                placeholder="Enter SFW Value",
+                label="CRUSH",
+                placeholder="Enter CRUSH Value",
                 value=f"{current_values[4]:03d}" if current_values[4] is not None else None,
                 required=True,
                 min_length=3,

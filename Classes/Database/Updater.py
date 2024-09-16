@@ -94,8 +94,8 @@ class DatabaseUpdater(DBWorkerBranch):
         self.execute(
             "UPDATE trading_card_stats SET bad = %s, battle = %s, "
             "nsfw = %s, sfw = %s, die_marker = %s WHERE card_id = %s",
-            stats.bad_stat, stats.battle_stat, stats.nsfw_stat, 
-            stats.sfw_stat, stats.die_marker, stats._parent.id
+            stats.bad_stat, stats.cute_stat, stats.cuddle_stat,
+            stats.crush_stat, stats.die_marker, stats._parent.id
         )
         
 ################################################################################

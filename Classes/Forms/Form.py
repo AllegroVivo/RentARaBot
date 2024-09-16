@@ -11,6 +11,7 @@ from discord import (
     User, 
     CategoryChannel
 )
+from discord.ext.pages import Page
 
 from Assets import BotEmojis
 from Errors import MaxItemsReached, ChannelNotSet, IncompleteForm
@@ -383,8 +384,14 @@ class Form:
     
 ################################################################################
     async def paginate_responses(self, interaction: Interaction) -> None:
-        
-        pass
+
+        pages = [
+            Page(embeds=[response.compile()])
+            for response
+            in self._responses
+        ]
+        frogginator = Frogginator(pages, self)
+        await frogginator.respond(interaction)
     
 ################################################################################
     async def remove(self, interaction: Interaction) -> None:

@@ -441,7 +441,7 @@ class CardDeck:
         )
     
 ################################################################################
-    async def generate_image(self, interaction: Interaction) -> None:
+    async def generate_image(self, interaction: Optional[Interaction]) -> None:
         
         slot_width = 150
         slot_height = 210
@@ -460,9 +460,10 @@ class CardDeck:
                 card_image = Image.open(BytesIO(response.content))
             except UnidentifiedImageError:
                 slot.card.permalink = None
-                await interaction.respond(embed=PermalinkFailed(slot.card.name), ephemeral=True)
-                # card_image = Image.open(f"Files/DefaultCard.png")
-                continue
+                if interaction:
+                    await interaction.respond(embed=PermalinkFailed(slot.card.name), ephemeral=True)
+                    # card_image = Image.open(f"Files/DefaultCard.png")
+                    continue
             else:
                 # Resize the card image to fit within the slot
                 card_image = card_image.resize((slot_width, slot_height))

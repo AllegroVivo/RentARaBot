@@ -19,9 +19,9 @@ class TradingCardStats:
     __slots__ = (
         "_parent",
         "_bad",
-        "_battle",
-        "_nsfw",
-        "_sfw",
+        "_cute",
+        "_cuddle",
+        "_crush",
         "_die",
     )
     
@@ -31,9 +31,9 @@ class TradingCardStats:
         self._parent: TradingCard = parent
         
         self._bad: Optional[int] = kwargs.get("bad")
-        self._battle: Optional[int] = kwargs.get("battle")
-        self._nsfw: Optional[int] = kwargs.get("nsfw")
-        self._sfw: Optional[int] = kwargs.get("sfw")
+        self._cute: Optional[int] = kwargs.get("cute")
+        self._cuddle: Optional[int] = kwargs.get("cuddle")
+        self._crush: Optional[int] = kwargs.get("crush")
         self._die: Optional[int] = kwargs.get("die")
     
 ################################################################################
@@ -43,9 +43,9 @@ class TradingCardStats:
         return cls(
             parent=parent,
             bad=data[1],
-            battle=data[2],
-            nsfw=data[3],
-            sfw=data[4],
+            cute=data[2],
+            cuddle=data[3],
+            crush=data[4],
             die=data[5],
         )
     
@@ -69,38 +69,38 @@ class TradingCardStats:
         
 ################################################################################
     @property
-    def battle_stat(self) -> Optional[int]:
+    def cute_stat(self) -> Optional[int]:
         
-        return self._battle
+        return self._cute
     
-    @battle_stat.setter
-    def battle_stat(self, value: int) -> None:
+    @cute_stat.setter
+    def cute_stat(self, value: int) -> None:
         
-        self._battle = value
+        self._cute = value
         # self.update()
         
 ################################################################################
     @property
-    def nsfw_stat(self) -> Optional[int]:
+    def cuddle_stat(self) -> Optional[int]:
         
-        return self._nsfw
+        return self._cuddle
     
-    @nsfw_stat.setter
-    def nsfw_stat(self, value: int) -> None:
+    @cuddle_stat.setter
+    def cuddle_stat(self, value: int) -> None:
         
-        self._nsfw = value
+        self._cuddle = value
         # self.update()
         
 ################################################################################
     @property
-    def sfw_stat(self) -> Optional[int]:
+    def crush_stat(self) -> Optional[int]:
         
-        return self._sfw
+        return self._crush
     
-    @sfw_stat.setter
-    def sfw_stat(self, value: int) -> None:
+    @crush_stat.setter
+    def crush_stat(self, value: int) -> None:
         
-        self._sfw = value
+        self._crush = value
         # self.update()
         
 ################################################################################
@@ -126,9 +126,9 @@ class TradingCardStats:
         modal = CardStatsModal((
             self.die_marker,
             self.bad_stat, 
-            self.battle_stat,
-            self.nsfw_stat,
-            self.sfw_stat
+            self.cute_stat,
+            self.cuddle_stat,
+            self.crush_stat
         ))
         
         await interaction.response.send_modal(modal)
@@ -140,9 +140,9 @@ class TradingCardStats:
         (
             self.die_marker,
             self.bad_stat, 
-            self.battle_stat, 
-            self.nsfw_stat, 
-            self.sfw_stat
+            self.cute_stat,
+            self.cuddle_stat,
+            self.crush_stat
         ) = modal.value
         self.update()
     

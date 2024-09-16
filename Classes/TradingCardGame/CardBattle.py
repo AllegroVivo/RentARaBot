@@ -247,6 +247,8 @@ class CardBattle:
 ################################################################################
     async def select_card(self, user, matching_cards, player_deck) -> TradingCard:
 
+        await player_deck.generate_image(None)
+
         player_name = user.display_name
         prompt = U.make_embed(
             color=(
@@ -259,7 +261,8 @@ class CardBattle:
                 f"{player_name} has {len(matching_cards)} matching cards: "
                 f"{', '.join([c.card.name for c in matching_cards])}\n\n"
                 "Please select a card to play."
-            )
+            ),
+            image_url=player_deck.image
         )
         view = FroggeSelectView(user, [c.card.select_option() for c in matching_cards])
 
@@ -271,7 +274,7 @@ class CardBattle:
 ################################################################################
     async def best_of_three(self, p1_card, p2_card) -> str:
 
-        round_stats = ["BATTLE", "NSFW", "SFW"]
+        round_stats = ["CUTE", "CUDDLE", "CRUSH"]
         p1_wins, p2_wins = 0, 0
         roller = self._p1 if random.choice([True, False]) else self._p2
         player_color = self.P1_COLOR if roller == self._p1 else self.P2_COLOR
@@ -287,9 +290,14 @@ class CardBattle:
         await self.wait_for(2)
 
         for stat in round_stats:
-            # TODO: Swap out for stat name image
-            await self.channel.send(f"Comparing `{stat}` stats!")
-            await self.wait_for(1)
+            prompt = U.make_embed(
+                color=self.SYSTEM_COLOR,
+                title="__Stat Comparison__",
+                description=f"Comparing `{stat}` stats!",
+                image_url=self.get_stat_image(stat)
+            )
+            await self.channel.send(embed=prompt)
+            await self.wait_for(2)
 
             while True:
                 roll_result = await self.random_roll(0, 999, roller)
@@ -370,6 +378,20 @@ class CardBattle:
             return "tie"
 
 ################################################################################
+    @staticmethod
+    def get_stat_image(stat_name: str) -> str:
+
+        match stat_name:
+            case "CUTE":
+                return BotImages.Cute
+            case "CUDDLE":
+                return BotImages.Cuddle
+            case "CRUSH":
+                return BotImages.Crush
+            case _:
+                raise ValueError(f"Invalid stat name: {stat_name}")
+
+################################################################################
     async def compare_bad_stats(self, p1_card, p2_card, roll_result) -> tuple:
 
         p1_bad_flag = False
@@ -427,7 +449,8 @@ class CardBattle:
         prompt = U.make_embed(
             color=self.SYSTEM_COLOR,
             title="__Battle Concluded__",
-            description=message
+            description=message,
+            image_url=BotImages.Winner
         )
         await self.channel.send(embed=prompt)
 

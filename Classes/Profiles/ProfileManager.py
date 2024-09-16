@@ -70,7 +70,6 @@ class ProfileManager:
         
         self._requirements.load(payload["requirements"])
 
-        print(payload)
         self._category = await self.guild.get_or_fetch_channel(payload["category_id"])
     
 ################################################################################

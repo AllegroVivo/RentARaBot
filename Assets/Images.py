@@ -20,4 +20,10 @@ class BotImages:
     Die5 = "https://cdn.discordapp.com/attachments/957656105092272208/1281736344451944508/Die5.png"
     Die6 = "https://cdn.discordapp.com/attachments/957656105092272208/1281736344674107422/Die6.png"
 
+    Cute = "https://cdn.discordapp.com/attachments/957656105092272208/1284674837658341436/Cute.png"
+    Cuddle = "https://cdn.discordapp.com/attachments/957656105092272208/1284674837314277397/Cuddle.png"
+    Crush = "https://cdn.discordapp.com/attachments/957656105092272208/1284674836752371723/Crush.png"
+
+    Winner = "https://tenor.com/view/winner-gif-25586806"
+
 ################################################################################
