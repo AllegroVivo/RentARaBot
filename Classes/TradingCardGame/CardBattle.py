@@ -441,21 +441,29 @@ class CardBattle:
         
         if win_counts["Player 1"] > win_counts["Player 2"]:
             message = f"{self._p1.user.display_name} wins the battle!"
+            winner = self._p1
         elif win_counts["Player 2"] > win_counts["Player 1"]:
             message = f"{self._p2.user.display_name} wins the battle!"
+            winner = self._p2
         else:
             message = "The battle is a tie!"
+            winner = None
 
         prompt = U.make_embed(
             color=self.SYSTEM_COLOR,
             title="__Battle Concluded__",
             description=message,
+            thumbnail_url=winner.user.avatar.url if winner else None,
             image_url=BotImages.Winner
         )
         await self.channel.send(embed=prompt)
+        await self.channel.archive()
 
         self._mgr._battles.remove(self)
-        
+
+        self._p1.current_deck.reset_overrides()
+        self._p2.current_deck.reset_overrides()
+
 ################################################################################
     @staticmethod
     def get_round_info(round_idx: int) -> Tuple[str, str]:

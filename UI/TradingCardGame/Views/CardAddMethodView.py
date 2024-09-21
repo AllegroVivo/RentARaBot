@@ -16,7 +16,7 @@ class CardAddMethodView(FroggeView):
         
         button_list = [
             AddViaIDButton(),
-            AddViaNameButton(),
+            # AddViaNameButton(),
             AddViaMenuButton(),
             CloseMessageButton()
         ]

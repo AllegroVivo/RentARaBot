@@ -19,19 +19,17 @@ class FroggeSelectView(FroggeView):
         owner: User, 
         options: List[SelectOption], 
         multi_select: bool = False,
-        return_interaction: bool = False
+        return_interaction: bool = False,
+        show_close: bool = True
     ):
         
         super().__init__(owner, None)
         
         self.return_interaction = return_interaction
-        
-        button_list = [
-            OptionSelect(options, multi_select),
-            CloseMessageButton()
-        ]
-        for btn in button_list:
-            self.add_item(btn)
+
+        self.add_item(OptionSelect(options, multi_select))
+        if show_close:
+            self.add_item(CloseMessageButton())
         
 ################################################################################
 class OptionSelect(Select):

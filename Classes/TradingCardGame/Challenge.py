@@ -105,7 +105,7 @@ class Challenge:
                 f"**The challenge will not be issued until you have selected a deck.**"
             )
         )
-        view = FroggeSelectView(interaction.user, player_deck_options)
+        view = FroggeSelectView(interaction.user, player_deck_options, show_close=False)
         
         await interaction.respond(embed=prompt, view=view)
         await view.wait()
@@ -178,7 +178,7 @@ class Challenge:
                 f"**The challenge will not be accepted until you have selected a deck.**"
             )
         )
-        view = FroggeSelectView(interaction.user, opponent_deck_options)
+        view = FroggeSelectView(interaction.user, opponent_deck_options, show_close=False)
         
         await interaction.respond(embed=prompt, view=view)
         await view.wait()
