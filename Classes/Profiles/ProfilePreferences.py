@@ -428,7 +428,7 @@ class ProfilePreferences(ProfileSection):
 
         match_value = 0
         match_max = 0
-        
+
         self_gender = self.parent.ataglance.gender
         self_race = self.parent.ataglance.race
         if isinstance(self_race, Race):
@@ -437,7 +437,7 @@ class ProfilePreferences(ProfileSection):
                 match_value += 1
             if self_race in preferences.get_preference(self_gender).restrictions:
                 match_value -= 1
-                
+
         if isinstance(self_gender, Gender):
             match_max += 1
             if preferences.get_preference(self_gender).is_complete:
@@ -458,7 +458,7 @@ class ProfilePreferences(ProfileSection):
             match_max += 1
             if music in self.music_prefs:
                 match_value += 1
-        
+
         return profile, int((match_value / match_max) * 100)
 
 ################################################################################

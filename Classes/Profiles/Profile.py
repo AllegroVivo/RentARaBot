@@ -665,7 +665,7 @@ class Profile:
 
 ################################################################################
     async def make_contact(self, interaction: Interaction) -> None:
-        
+
         p2 = self._mgr.get_profile(interaction.user)
         m1 = await self._mgr.guild.get_or_fetch_member(self.user.id)
 
@@ -674,14 +674,14 @@ class Profile:
             if self._mgr.match_category is not None
             else interaction.guild
         )
-        
+
         channel = await target.create_text_channel(f"{self.name}-{p2.name}")
         await channel.send(f"♥ {m1.mention} ♥ {p2.user.mention} ♥")
-        
+
         await channel.set_permissions(interaction.guild.default_role, view_channel=False)
         await channel.set_permissions(m1, view_channel=True)
         await channel.set_permissions(interaction.user, view_channel=True)
-        
+
         success = U.make_embed(
             title="__Contact Created__",
             description=(
