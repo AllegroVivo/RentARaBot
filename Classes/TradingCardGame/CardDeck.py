@@ -480,7 +480,10 @@ class CardDeck:
 
             # Calculate the position to paste the card on the canvas
             position = (i * slot_width, 0)
-            canvas.paste(card_image, position, card_image)
+            try:
+                canvas.paste(card_image, position, card_image)
+            except ValueError:
+                pass
 
         filepath = f"Files/Deck-{self.id}.png"
         canvas.save(filepath)
