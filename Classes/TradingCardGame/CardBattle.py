@@ -461,8 +461,8 @@ class CardBattle:
 
         self._mgr._battles.remove(self)
 
-        self._p1.current_deck.reset_overrides()
-        self._p2.current_deck.reset_overrides()
+        await self._p1.current_deck.reset_overrides()
+        await self._p2.current_deck.reset_overrides()
 
 ################################################################################
     @staticmethod

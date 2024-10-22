@@ -514,9 +514,9 @@ class CardDeck:
         self._overrides.append(card.id)
         
 ################################################################################
-    def reset_overrides(self) -> None:
+    async def reset_overrides(self) -> None:
 
         self._overrides.clear()
-        self.generate_image(None)
+        await self.generate_image(None)
 
 ################################################################################
